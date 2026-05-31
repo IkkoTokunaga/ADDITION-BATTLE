@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      # TODO(security): Listen on 127.0.0.1 on the host machine to comply with security guidelines.
+      - "127.0.0.1:4321:4321"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/addition
+      - SESSION_SECRET=local_dev_secret_key_for_testing_addition_battle_game_32bytes
+      - NODE_ENV=development
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15-alpine
+    ports:
+      # TODO(security): Listen on 127.0.0.1 on the host machine to comply with security guidelines.
+      - "127.0.0.1:5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=addition
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  pgdata:

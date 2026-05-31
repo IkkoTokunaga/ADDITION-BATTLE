@@ -1,0 +1,132 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { query } from '../utils/db';
+
+interface ScoreRecord {
+  username: string;
+  score: number;
+  stage: number;
+  created_at: string;
+}
+
+let rankings: ScoreRecord[] = [];
+let dbError = false;
+
+try {
+  const result = await query(
+    `SELECT username, score, stage, created_at FROM scores ORDER BY score DESC, stage DESC LIMIT 10`
+  );
+  rankings = result.rows || [];
+} catch (err) {
+  console.error('Failed to load rankings on server-side render:', err);
+  dbError = true;
+}
+
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const date = String(d.getDate()).padStart(2, '0');
+  const h = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${y}/${m}/${date} ${h}:${min}`;
+};
+---
+
+<Layout title="ランキング" description="鬼退治足し算バトルゲームのハイスコアランキング！全国の猛者たちと競い合おう！">
+  <div class="w-full max-w-2xl mx-auto flex flex-col gap-6 py-4">
+    <div class="text-center flex flex-col gap-2">
+      <h1 class="text-3xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#9b5de5] to-[#f15bb5] glow-text-purple">
+        ハイスコアランキング
+      </h1>
+      <p class="text-xs text-[#b5a9df]">上位10名の最強数学ソルジャーたちの記録です。</p>
+    </div>
+
+    <!-- Rankings Card -->
+    <div class="w-full glass-panel p-6 md:p-8 flex flex-col gap-6">
+      {dbError ? (
+        <div class="text-center py-8 text-[#f15bb5] font-bold">
+          <p>ランキングの読み込みに失敗しました。</p>
+          <p class="text-xs text-[#b5a9df] mt-1">データベースの接続状況を確認してください。</p>
+        </div>
+      ) : rankings.length === 0 ? (
+        <div class="text-center py-12 text-[#b5a9df]/60 font-bold">
+          <p>まだ記録がありません。最初の挑戦者になりましょう！</p>
+        </div>
+      ) : (
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse text-left">
+            <thead>
+              <tr class="border-b border-[#9b5de5]/20 text-xs font-bold uppercase tracking-wider text-[#b5a9df] pb-3">
+                <th class="py-3 px-4 text-center">順位</th>
+                <th class="py-3 px-4">ニックネーム</th>
+                <th class="py-3 px-4 text-right">スコア</th>
+                <th class="py-3 px-4 text-center">到達ステージ</th>
+                <th class="py-3 px-4 text-right">記録日時</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rankings.map((r, index) => {
+                const rank = index + 1;
+                let rankClass = "text-[#f3f0ff]";
+                let rankBadge = `${rank}`;
+                
+                if (rank === 1) {
+                  rankClass = "text-[#fee440] font-black scale-110";
+                  rankBadge = "🥇";
+                } else if (rank === 2) {
+                  rankClass = "text-[#00bbf9] font-black";
+                  rankBadge = "🥈";
+                } else if (rank === 3) {
+                  rankClass = "text-[#f15bb5] font-black";
+                  rankBadge = "🥉";
+                }
+
+                return (
+                  <tr class="border-b border-[#9b5de5]/10 hover:bg-[#130f24]/50 transition-colors text-sm">
+                    <td class={`py-3.5 px-4 text-center text-lg ${rankClass}`}>
+                      {rankBadge}
+                    </td>
+                    <td class="py-3.5 px-4 font-bold text-[#f3f0ff]">
+                      {r.username}
+                    </td>
+                    <td class="py-3.5 px-4 text-right font-black text-[#00f5d4] glow-text-cyan">
+                      {r.score.toLocaleString()}
+                    </td>
+                    <td class="py-3.5 px-4 text-center font-bold text-[#fee440]">
+                      {r.stage >= 13 ? "全クリ" : `STAGE ${r.stage}`}
+                    </td>
+                    <td class="py-3.5 px-4 text-right text-xs text-[#b5a9df]/60">
+                      {formatDate(r.created_at)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <!-- Back to Title -->
+      <div class="flex justify-center mt-4">
+        <a 
+          href="/" 
+          id="back-to-title-btn"
+          class="btn-primary font-black px-8 py-3 text-base tracking-wider"
+        >
+          タイトルに戻る
+        </a>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  import Alpine from 'alpinejs';
+  import { gameStore } from '../scripts/game';
+  
+  if (!Alpine.store('game')) {
+    Alpine.store('game', gameStore());
+  }
+</script>

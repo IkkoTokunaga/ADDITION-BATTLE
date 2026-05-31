@@ -1,0 +1,143 @@
+---
+import { ClientRouter } from 'astro:transitions';
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { 
+  title, 
+  description = "鬼退治足し算バトルゲーム！足し算の練習をして鬼を退治しよう！" 
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    
+    <!-- SEO Meta Tags -->
+    <title>{title} | 鬼退治足し算バトル</title>
+    <meta name="description" content={description} />
+    <meta name="robots" content="index, follow" />
+    
+    <!-- ViewTransitions/ClientRouter for SPA-like navigation and persistent audio -->
+    <ClientRouter />
+  </head>
+  <body class="flex flex-col min-h-screen">
+    <!-- Toxic Mist Screen Overlay for damage effect -->
+    <div id="toxic-overlay" class="toxic-overlay"></div>
+
+    <header x-data class="w-full max-w-7xl mx-auto px-4 md:px-8 py-3 md:py-6 flex flex-wrap justify-between items-center z-10 gap-3">
+      <div class="flex items-center gap-3">
+        <span class="text-xl md:text-2xl font-black tracking-wider glow-text-purple text-[#9b5de5]">ADDITION BATTLE</span>
+      </div>
+
+      <!-- ゲームプレイ中のHUD表示（ヘッダー余白の有効利用） -->
+      <div x-show="$store.game && $store.game.playing" x-cloak class="flex items-center gap-3 text-xs md:text-sm bg-[#130f24]/50 border border-[#9b5de5]/20 rounded-full px-4 py-1.5 glow-border">
+        <span class="text-[#b5a9df] font-bold" x-text="$store.game.username"></span>
+        <span class="h-4 w-px bg-[#9b5de5]/20"></span>
+        <span class="text-[#fee440] font-black" x-text="`STG ${$store.game.stage}`"></span>
+        <span class="h-4 w-px bg-[#9b5de5]/20"></span>
+        <span class="text-[#00f5d4] font-black" x-text="`${$store.game.score.toLocaleString()} pts`"></span>
+        <span class="h-4 w-px bg-[#9b5de5]/20"></span>
+        <div class="flex gap-0.5">
+          <span x-text="$store.game.lives >= 1 ? '❤️' : '🖤'"></span>
+          <span x-text="$store.game.lives >= 2 ? '❤️' : '🖤'"></span>
+          <span x-text="$store.game.lives >= 3 ? '❤️' : '🖤'"></span>
+        </div>
+      </div>
+
+      <nav class="flex gap-4">
+        <!-- 通常のナビゲーション（ゲーム中以外） -->
+        <a 
+          x-show="!$store.game || !$store.game.playing" 
+          href="/" 
+          id="nav-home-link" 
+          class="text-sm font-bold text-[#b5a9df] hover:text-[#f3f0ff] transition-colors"
+        >
+          スタート
+        </a>
+        <a 
+          x-show="!$store.game || !$store.game.playing" 
+          href="/ranking" 
+          id="nav-ranking-link" 
+          class="text-sm font-bold text-[#b5a9df] hover:text-[#f3f0ff] transition-colors"
+        >
+          ランキング
+        </a>
+
+        <!-- ゲームプレイ中のメニュー（ヘッダー余白の有効利用・誤操作防止） -->
+        <button 
+          x-show="$store.game && $store.game.playing" 
+          x-cloak
+          @click="if(confirm('修行を諦めてタイトルに戻りますか？')) { $store.game.goBackToTitle() }" 
+          class="text-xs md:text-sm font-black text-[#f15bb5] hover:text-white transition-colors cursor-pointer bg-[#f15bb5]/10 border border-[#f15bb5]/30 rounded-full px-3 py-1 hover:bg-[#f15bb5]/20"
+        >
+          修行を諦める
+        </button>
+      </nav>
+    </header>
+
+    <main class="flex-grow flex flex-col justify-start md:justify-center items-center w-full max-w-7xl mx-auto px-4 md:px-6 pt-2 md:py-4 z-10">
+      <slot />
+    </main>
+
+    <footer x-data="{
+      muted: false,
+      toggleMute() {
+        this.muted = !this.muted;
+        const player = document.getElementById('bgm-player') as HTMLAudioElement | null;
+        if (player) {
+          player.muted = this.muted;
+        }
+        localStorage.setItem('addition_battle_muted', this.muted ? '1' : '0');
+      },
+      init() {
+        if (typeof window !== 'undefined') {
+          this.muted = localStorage.getItem('addition_battle_muted') === '1';
+          setTimeout(() => {
+            const player = document.getElementById('bgm-player') as HTMLAudioElement | null;
+            if (player) player.muted = this.muted;
+          }, 100);
+        }
+      }
+    }" class="w-full py-4 text-xs text-[#b5a9df]/50 border-t border-[#9b5de5]/10 mt-4 md:mt-8 z-10 bg-[#0b0914]/80 backdrop-blur-sm">
+      <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+        <p>&copy; 2026 鬼退治足し算バトル. All rights reserved.</p>
+        
+        <!-- フッター機能（余白の有効利用） -->
+        <div class="flex items-center gap-6">
+          <a href="/" class="hover:text-[#f3f0ff] transition-colors">ホーム</a>
+          <a href="/ranking" class="hover:text-[#f3f0ff] transition-colors">ランキング</a>
+          
+          <div class="h-3 w-px bg-[#9b5de5]/20"></div>
+
+          <!-- BGMミュート切り替え -->
+          <button 
+            @click="toggleMute()" 
+            class="flex items-center gap-1.5 text-[#b5a9df]/70 hover:text-[#f3f0ff] transition-colors bg-transparent border-0 cursor-pointer text-xs font-bold focus:outline-none"
+          >
+            <span x-text="muted ? '🔇 BGM OFF' : '🔊 BGM ON'"></span>
+          </button>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Persistent BGM player across page transitions -->
+    <audio 
+      id="bgm-player" 
+      data-astro-transition-persist="bgm" 
+      style="display:none;"
+    ></audio>
+  </body>
+</html>
+
+<script>
+  import { navigate } from 'astro:transitions/client';
+  (window as any).astroNavigate = navigate;
+</script>
