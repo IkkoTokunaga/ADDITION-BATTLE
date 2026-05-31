@@ -15,7 +15,6 @@ class AudioManager {
       oni_attack: '/sounds/鬼攻撃.mp3',
       laser: '/sounds/ビーム砲.mp3',
       charge: '/sounds/光玉溜め.mp3',
-      clear_screen: '/sounds/クリア画面.mp3',
       growl1: '/sounds/鬼鳴き声1.mp3',
       growl2: '/sounds/鬼鳴き声2.mp3',
       growl3: '/sounds/鬼鳴き声3.mp3',

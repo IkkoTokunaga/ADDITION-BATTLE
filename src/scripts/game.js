@@ -332,8 +332,10 @@ export function gameStore() {
       
       // Stop stage BGM and play game over/clear screen BGM
       const bgmPlayer = document.getElementById('bgm-player');
-      if (bgmPlayer) bgmPlayer.pause();
-      audioManager.play('clear_screen');
+      if (bgmPlayer) {
+        bgmPlayer.setAttribute('src', '/sounds/クリア画面.mp3');
+        bgmPlayer.play().catch(e => console.log('BGM Autoplay blocked.', e));
+      }
       
       try {
         const res = await fetch('/api/stages/clear', {
@@ -367,8 +369,10 @@ export function gameStore() {
       // Stage 12 clear BGM is played, others play a satisfying explosion sound
       if (this.stage === 12) {
         const bgmPlayer = document.getElementById('bgm-player');
-        if (bgmPlayer) bgmPlayer.pause();
-        audioManager.play('clear_screen');
+        if (bgmPlayer) {
+          bgmPlayer.setAttribute('src', '/sounds/クリア画面.mp3');
+          bgmPlayer.play().catch(e => console.log('BGM Autoplay blocked.', e));
+        }
       } else {
         audioManager.play('laser');
       }
