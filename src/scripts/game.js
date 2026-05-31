@@ -174,9 +174,9 @@ export function gameStore() {
 
     // Move to next question in queue
     nextQuestion() {
+      this.userInput = '';  // clear before changing currentQuestion so both land in the same render frame
       if (this.questionIndex < this.questionQueue.length) {
         this.currentQuestion = this.questionQueue[this.questionIndex];
-        this.userInput = '';
         this.questionStartTime = Date.now();
         
         // Trigger pre-fetching 5 more questions when player starts the 4th question (index 3) of the queue
@@ -250,8 +250,9 @@ export function gameStore() {
     // Submit user's answer
     async submitAnswer() {
       if (this.userInput === '' || this.loading) return;
-      
+
       const userAnsVal = parseInt(this.userInput, 10);
+      this.userInput = '';  // clear immediately after parsing, before any reactive changes
       const q = this.currentQuestion;
       const isCorrect = userAnsVal === q.num1 + q.num2;
       const timeTaken = Math.max(0.1, (Date.now() - this.questionStartTime) / 1000);
@@ -300,8 +301,6 @@ export function gameStore() {
         this.showMist = true;
         setTimeout(() => this.showMist = false, 800);
       }
-
-      this.userInput = '';
 
       // Check stage progression status
       if (this.lives === 0) {
