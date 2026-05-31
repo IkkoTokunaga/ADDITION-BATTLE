@@ -92,16 +92,16 @@ import Layout from '../layouts/Layout.astro';
       <div class="col-span-2 glass-panel p-2.5 sm:p-4 md:p-6 flex flex-col items-center gap-1.5 md:gap-3">
         <span class="text-[10px] sm:text-xs font-bold text-[#b5a9df] tracking-widest uppercase">数学の女教師</span>
         <div class="relative w-full aspect-[3/4] max-w-[95px] sm:max-w-[160px] md:max-w-[240px] bg-[#0b0914]/40 rounded-xl overflow-hidden">
-          <img 
-            src="/images/女教師.png" 
-            alt="数学 of 女教師" 
+          <img
+            src="/images/女教師.png"
+            alt="数学の女教師"
             class="w-full h-full object-contain"
           />
         </div>
-        <div class="w-full bg-[#130f24] rounded-full h-1 md:h-2.5 mt-1 border border-[#9b5de5]/10">
-          <div class="bg-gradient-to-r from-[#fee440] to-[#00f5d4] h-full rounded-full" style="width: 100%"></div>
+        <div class="w-full bg-[#130f24] rounded-full h-1 md:h-2.5 mt-1 border border-[#9b5de5]/10 overflow-hidden">
+          <div class="bg-gradient-to-r from-[#fee440] to-[#00f5d4] h-full rounded-full transition-all duration-300" :style="`width: ${($store.game.lives / 3) * 100}%`"></div>
         </div>
-        <span class="text-[9px] sm:text-xs text-[#b5a9df]/70">HP: 100%</span>
+        <span class="text-[9px] sm:text-xs text-[#b5a9df]/70" x-text="`ライフ: ${$store.game.lives} / 3`"></span>
       </div>
 
       <!-- Center: VS -->
@@ -233,12 +233,16 @@ import Layout from '../layouts/Layout.astro';
           
           <div class="bg-[#130f24] p-4 rounded-xl border border-[#9b5de5]/20 flex flex-col gap-2">
             <div class="flex justify-between items-center text-sm">
+              <span class="text-[#b5a9df]">このステージの獲得:</span>
+              <span class="text-[#f3f0ff] font-black" x-text="`+${$store.game.lastStageScore.toLocaleString()}`"></span>
+            </div>
+            <div class="flex justify-between items-center text-sm">
               <span class="text-[#b5a9df]">鬼撃破ボーナス:</span>
-              <span class="text-[#fee440] font-black" x-text="`+${($store.game.stage * 1010) / 2}`"></span>
+              <span class="text-[#fee440] font-black" x-text="`+${$store.game.lastDefeatBonus.toLocaleString()}`"></span>
             </div>
             <div class="w-full h-px bg-[#9b5de5]/10 my-1"></div>
             <div class="flex justify-between items-center">
-              <span class="text-sm text-[#b5a9df]">合計獲得スコア:</span>
+              <span class="text-sm text-[#b5a9df]">合計スコア:</span>
               <span class="text-xl font-black text-[#00f5d4] glow-text-cyan" x-text="$store.game.score.toLocaleString()"></span>
             </div>
           </div>

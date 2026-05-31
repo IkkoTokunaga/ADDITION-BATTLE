@@ -4,6 +4,10 @@ import { query } from '../../utils/db';
 
 const app = new Hono().basePath('/api');
 
+// Oni max HP per stage. Damage per correct answer is roughly stage*100, so this
+// targets ~7 correct answers to clear a stage (see openspec design.md).
+const ONI_HP_PER_STAGE = 700;
+
 interface Question {
   id: number;
   num1: number;
@@ -276,7 +280,7 @@ app.post('/stages/clear', async (c) => {
     }
 
     // Determine final score and clear status
-    const oniMaxHp = stage * 1010;
+    const oniMaxHp = stage * ONI_HP_PER_STAGE;
     const isStageCleared = !is_game_over && lives > 0 && totalDamage >= oniMaxHp;
     
     let defeatBonus = 0;
@@ -323,6 +327,8 @@ app.post('/stages/clear', async (c) => {
       return c.json({
         verified: true,
         final_score: finalScore,
+        stage_score: stageScore,
+        defeat_bonus: defeatBonus,
         next_stage_token: nextStageToken,
         is_game_over: false
       });
@@ -330,6 +336,8 @@ app.post('/stages/clear', async (c) => {
       return c.json({
         verified: true,
         final_score: finalScore,
+        stage_score: stageScore,
+        defeat_bonus: 0,
         is_game_over: true
       });
     }
@@ -340,16 +348,7 @@ app.post('/stages/clear', async (c) => {
 });
 
 // 4. GET /api/scores - Retrieve top 10 rankings
-app.post('/scores', async (c) => { // Using POST for compatibility or standard GET? The spec says GET /api/scores
-  // We will support both GET /api/scores and POST /api/scores just in case
-  return getScoresHandler(c);
-});
-
 app.get('/scores', async (c) => {
-  return getScoresHandler(c);
-});
-
-async function getScoresHandler(c: any) {
   try {
     const result = await query(
       `SELECT username, score, stage, created_at FROM scores ORDER BY score DESC, stage DESC LIMIT 10`
@@ -359,6 +358,6 @@ async function getScoresHandler(c: any) {
     console.error('Error fetching rankings:', err);
     return c.json({ error: 'Internal Server Error' }, 500);
   }
-}
+});
 
 export const ALL = (context: any) => app.fetch(context.request);

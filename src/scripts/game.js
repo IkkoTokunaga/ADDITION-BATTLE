@@ -1,5 +1,9 @@
 import { audioManager } from './audio';
 
+// Oni max HP per stage. Must match ONI_HP_PER_STAGE in src/pages/api/[...path].ts
+// so client-side defeat detection agrees with server-side verification.
+const ONI_HP_PER_STAGE = 700;
+
 // Helper to generate a unique player ID if none exists in localStorage
 function getOrGeneratePlayerId() {
   if (typeof window === 'undefined') return '';
@@ -19,9 +23,13 @@ export function gameStore() {
     stage: 1,
     score: 0,
     lives: 3,
-    oniHp: 1010,
-    oniMaxHp: 1010,
-    
+    oniHp: ONI_HP_PER_STAGE,
+    oniMaxHp: ONI_HP_PER_STAGE,
+
+    // Last cleared-stage results, shown in the STAGE CLEAR modal
+    lastStageScore: 0,
+    lastDefeatBonus: 0,
+
     // UI input & questions
     userInput: '',
     currentQuestion: null,
@@ -95,7 +103,7 @@ export function gameStore() {
       this.stageCleared = false;
       this.stage = stageNum;
       this.lives = 3;
-      this.oniMaxHp = stageNum * 1010;
+      this.oniMaxHp = stageNum * ONI_HP_PER_STAGE;
       this.oniHp = this.oniMaxHp;
       this.userInput = '';
       this.questionQueue = [];
@@ -365,18 +373,10 @@ export function gameStore() {
     // Handle stage clear state
     async clearStage() {
       this.loading = true;
-      
-      // Stage 12 clear BGM is played, others play a satisfying explosion sound
-      if (this.stage === 12) {
-        const bgmPlayer = document.getElementById('bgm-player');
-        if (bgmPlayer) {
-          bgmPlayer.setAttribute('src', '/sounds/クリア画面.mp3');
-          bgmPlayer.play().catch(e => console.log('BGM Autoplay blocked.', e));
-        }
-      } else {
-        audioManager.play('laser');
-      }
-      
+
+      // Play the defeat blast; the explosion animation runs while we verify with the server.
+      audioManager.play('laser');
+
       try {
         const res = await fetch('/api/stages/clear', {
           method: 'POST',
@@ -390,26 +390,34 @@ export function gameStore() {
           })
         });
 
-        if (res.ok) {
-          const data = await res.json();
-          this.score = data.final_score; // Update verified score
-          this.nextStageToken = data.next_stage_token || '';
-          
-          if (this.stage === 12) {
-            // Stage 12 completed means the entire game is finished!
-            this.gameCompleted = true;
-            this.stageCleared = false;
-            this.playing = false;
-            this.fetchRankings();
-            this.loading = false;
-          } else {
-            // Normal stage clear: wait 1.5 seconds for defeat animation and automatically proceed
-            setTimeout(async () => {
-              await this.proceedToNextStage();
-            }, 1500);
-          }
-        } else {
+        if (!res.ok) {
           this.loading = false;
+          return;
+        }
+
+        const data = await res.json();
+        this.score = data.final_score; // Verified cumulative score
+        this.lastDefeatBonus = data.defeat_bonus || 0;
+        this.lastStageScore = data.stage_score || 0;
+        this.nextStageToken = data.next_stage_token || '';
+
+        if (this.stage === 12) {
+          // Stage 12 cleared means the whole game is finished.
+          const bgmPlayer = document.getElementById('bgm-player');
+          if (bgmPlayer) {
+            bgmPlayer.setAttribute('src', '/sounds/クリア画面.mp3');
+            bgmPlayer.play().catch(e => console.log('BGM Autoplay blocked.', e));
+          }
+          this.gameCompleted = true;
+          this.playing = false;
+          this.loading = false;
+          this.fetchRankings();
+        } else {
+          // Keep input locked while the explosion plays, then reveal the modal.
+          setTimeout(() => {
+            this.stageCleared = true;
+            this.loading = false;
+          }, 1100);
         }
       } catch (err) {
         console.error('Failed to submit stage clear score:', err);
@@ -417,9 +425,10 @@ export function gameStore() {
       }
     },
 
-    // Proceed to next stage
+    // Proceed to next stage (triggered from the STAGE CLEAR modal button)
     async proceedToNextStage() {
       if (this.stage >= 12) return;
+      this.stageCleared = false;
       audioManager.play('stage_intro');
       await this.loadStage(this.stage + 1);
     },

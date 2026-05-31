@@ -7,10 +7,12 @@ const dbUrl = process.env.DATABASE_URL || 'postgres://postgres:postgres@127.0.0.
 
 if (dbUrl.includes('neon.tech')) {
   // Use Neon's serverless HTTP API for stateless execution to prevent connection exhaustion.
+  // Parameterized queries must go through sql.query(text, params); calling the tag
+  // function directly with a plain string throws in @neondatabase/serverless v1.
   const sql = neon(dbUrl);
   queryFn = async (text: string, params?: any[]) => {
-    const rows = await (sql as any)(text, params || []);
-    return { rows };
+    const rows = await sql.query(text, params || []);
+    return { rows: rows as any[] };
   };
 } else {
   // Use standard pg Pool for local development.
