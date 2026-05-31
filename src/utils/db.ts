@@ -1,35 +1,30 @@
-import pg from 'pg';
 import { neon } from '@neondatabase/serverless';
+import pg from 'pg';
 
-let queryFn: (text: string, params?: any[]) => Promise<{ rows: any[] }>;
+type QueryResult = { rows: any[] };
+type QueryFn = (text: string, params?: any[]) => Promise<QueryResult>;
 
-const dbUrl = process.env.DATABASE_URL || 'postgres://postgres:postgres@127.0.0.1:5432/addition';
+const dbUrl =
+  process.env.DATABASE_URL || 'postgres://postgres:postgres@127.0.0.1:5432/addition';
+
+let queryFn: QueryFn;
 
 if (dbUrl.includes('neon.tech')) {
-  // Use Neon's serverless HTTP API for stateless execution to prevent connection exhaustion.
-  // Parameterized queries must go through sql.query(text, params); calling the tag
-  // function directly with a plain string throws in @neondatabase/serverless v1.
+  // Neon serverless (production). Use sql.query() for parameterized queries.
   const sql = neon(dbUrl);
-  queryFn = async (text: string, params?: any[]) => {
+  queryFn = async (text, params) => {
     const rows = await sql.query(text, params || []);
     return { rows: rows as any[] };
   };
 } else {
-  // Use standard pg Pool for local development.
-  const pool = new pg.Pool({
-    connectionString: dbUrl,
-  });
-  
-  queryFn = async (text: string, params?: any[]) => {
+  // Local Postgres (Docker dev) via connection pool.
+  const pool = new pg.Pool({ connectionString: dbUrl });
+  queryFn = async (text, params) => {
     const result = await pool.query(text, params);
     return { rows: result.rows };
   };
 }
 
-/**
- * Executes a parameterized SQL query against the database.
- * TODO(security): Parameterized queries must be enforced for all SQL execution to prevent SQL Injection.
- */
-export async function query(text: string, params?: any[]): Promise<{ rows: any[] }> {
+export function query(text: string, params?: any[]): Promise<QueryResult> {
   return queryFn(text, params);
 }

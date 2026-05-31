@@ -2,330 +2,195 @@
 import Layout from '../layouts/Layout.astro';
 ---
 
-<Layout title="鬼退治バトル" description="鬼退治足し算バトルゲームプレイ画面！足し算を正解して鬼を退治しよう！">
-  <div 
+<Layout title="バトル" description="鬼退治足し算バトル プレイ画面">
+  <div
     x-data="{
+      oniImages: [
+        '/images/ステージ1赤鬼.png',
+        '/images/ステージ2青鬼.png',
+        '/images/ステージ3黄鬼.png',
+        '/images/ステージ4緑鬼.png',
+        '/images/ステージ5紫鬼.png',
+        '/images/ステージ6強赤鬼.png',
+        '/images/ステージ7強青鬼.png',
+        '/images/ステージ8強黄鬼.png',
+        '/images/ステージ9強緑鬼.png',
+        '/images/ステージ10強紫鬼.png',
+        '/images/ステージ11強黒鬼.png',
+        '/images/ステージ12上級鬼.png'
+      ],
+      get g() { return this.$store.game; },
       init() {
-        // Guard: redirect back to title if username is empty
-        if (!this.$store.game.username) {
-          window.location.href = '/';
-          return;
+        if (!this.g.started) {
+          if (window.astroNavigate) window.astroNavigate('/'); else window.location.href = '/';
         }
-        
-        // Listen to physical keyboard events globally
-        this.keyboardHandler = (e) => this.$store.game.handleKeyboard(e);
-        window.addEventListener('keydown', this.keyboardHandler);
-      },
-      destroy() {
-        window.removeEventListener('keydown', this.keyboardHandler);
-      },
-      getOniImage(stage) {
-        const images = [
-          'ステージ1赤鬼.png',
-          'ステージ2青鬼.png',
-          'ステージ3黄鬼.png',
-          'ステージ4緑鬼.png',
-          'ステージ5紫鬼.png',
-          'ステージ6強赤鬼.png',
-          'ステージ7強青鬼.png',
-          'ステージ8強黄鬼.png',
-          'ステージ9強緑鬼.png',
-          'ステージ10強紫鬼.png',
-          'ステージ11強黒鬼.png',
-          'ステージ12上級鬼.png'
-        ];
-        const index = Math.max(1, Math.min(12, stage)) - 1;
-        return `/images/${images[index]}`;
-      },
-      getOniName(stage) {
-        const names = [
-          '赤鬼', '青鬼', '黄鬼', '緑鬼', '紫鬼', 
-          '強・赤鬼', '強・青鬼', '強・黄鬼', '強・緑鬼', '強・紫鬼', 
-          '強・黒鬼', '大魔王・上級鬼'
-        ];
-        const index = Math.max(1, Math.min(12, stage)) - 1;
-        return names[index];
       }
     }"
-    class="w-full max-w-5xl mx-auto flex flex-col gap-3 md:gap-6"
+    @keydown.window="
+      if (g.locked) return;
+      const k = $event.key;
+      if (k >= '0' && k <= '9') { g.pressKey(k); }
+      else if (k === 'Backspace') { $event.preventDefault(); g.backspace(); }
+      else if (k === 'Enter') { $event.preventDefault(); g.submitAnswer(); }
+    "
+    class="relative w-full max-w-md mx-auto flex flex-col gap-3"
   >
-    
-    <!-- Top HUD Bar -->
-    <div class="w-full glass-panel px-3 md:px-6 py-2 md:py-4 flex justify-between items-center gap-2 hidden md:flex">
-      <!-- Player Info & Hearts -->
-      <div class="flex items-center gap-2 md:gap-4">
-        <div class="flex flex-col">
-          <span class="text-[10px] md:text-xs text-[#b5a9df] uppercase tracking-wider font-bold">プレイヤー</span>
-          <span class="text-sm md:text-lg font-black text-[#f3f0ff]" x-text="$store.game.username"></span>
-        </div>
-        
-        <div class="h-6 md:h-8 w-px bg-[#9b5de5]/20"></div>
-        
-        <!-- Hearts Indicator -->
-        <div class="flex flex-col">
-          <span class="text-[10px] md:text-xs text-[#b5a9df] uppercase tracking-wider font-bold mb-0.5 md:mb-1">ライフ</span>
-          <div class="flex gap-1 text-sm md:text-xl">
-            <span class="animate-pulse" x-text="$store.game.lives >= 1 ? '❤️' : '🖤'"></span>
-            <span class="animate-pulse" x-text="$store.game.lives >= 2 ? '❤️' : '🖤'"></span>
-            <span class="animate-pulse" x-text="$store.game.lives >= 3 ? '❤️' : '🖤'"></span>
-          </div>
-        </div>
+    <!-- Top stats -->
+    <div class="flex items-center justify-between gap-2">
+      <div class="glass-panel px-3 py-1.5 flex items-center gap-2">
+        <span class="text-[10px] uppercase tracking-wider text-[#b5a9df]">Stage</span>
+        <span class="text-lg font-black text-[#fee440] glow-text-cyan" x-text="g.stage"></span>
+        <span class="text-[10px] text-[#b5a9df]/60">/ 12</span>
       </div>
+      <div class="glass-panel px-3 py-1.5 flex items-center gap-2">
+        <span class="text-[10px] uppercase tracking-wider text-[#b5a9df]">Score</span>
+        <span class="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-[#00f5d4] to-[#00bbf9]" x-text="g.score.toLocaleString()"></span>
+      </div>
+    </div>
 
-      <!-- Stage & Score -->
-      <div class="flex items-center gap-4 md:gap-8">
-        <div class="text-center">
-          <span class="text-[10px] md:text-xs text-[#b5a9df] uppercase tracking-wider font-bold block">ステージ</span>
-          <span class="text-sm md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#fee440] to-[#f15bb5]" x-text="`STAGE ${$store.game.stage}`"></span>
+    <!-- Oni HP -->
+    <div class="flex flex-col gap-1">
+      <div class="flex items-center justify-between text-[10px] font-bold text-[#f15bb5]">
+        <span>鬼 HP</span>
+        <span><span x-text="Math.ceil(g.oniHp).toLocaleString()"></span> / <span x-text="g.oniMaxHp.toLocaleString()"></span></span>
+      </div>
+      <div class="hp-track h-3 w-full">
+        <div class="hp-fill-oni" :style="`width:${g.oniHpPercent}%`"></div>
+      </div>
+    </div>
+
+    <!-- Battle arena -->
+    <div class="glass-panel relative overflow-hidden flex items-center justify-center h-56 md:h-64">
+      <div class="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_50%_30%,rgba(241,91,181,0.4),transparent_60%)]"></div>
+
+      <!-- Oni -->
+      <img
+        :src="oniImages[Math.min(Math.max(g.stage,1),12)-1]"
+        alt="鬼"
+        class="relative z-10 max-h-full max-w-[70%] object-contain drop-shadow-[0_0_24px_rgba(241,91,181,0.5)]"
+        :class="{ 'is-shaking': g.shaking, 'is-exploding': g.explode, 'float-idle': !g.shaking && !g.explode }"
+      />
+
+      <!-- Explosion shockwave -->
+      <template x-if="g.explode">
+        <div class="shockwave"></div>
+      </template>
+
+      <!-- Floating damage numbers -->
+      <template x-for="f in g.floatingTexts" :key="f.id">
+        <div class="floating-damage" x-text="'-' + f.value.toLocaleString()"></div>
+      </template>
+    </div>
+
+    <!-- Teacher + lives -->
+    <div class="glass-panel px-3 py-2 flex items-center gap-3">
+      <img src="/images/女教師.png" alt="女教師" class="h-12 w-12 object-contain rounded-lg bg-[#130f24]/50" />
+      <div class="flex-1 flex flex-col gap-1">
+        <div class="flex items-center gap-1 text-xl leading-none">
+          <template x-for="i in 3" :key="i">
+            <span
+              :class="(g.brokenHeart === (i-1)) ? 'heart-breaking' : ''"
+              x-text="(g.brokenHeart === (i-1)) ? '💔' : ((i-1) < g.lives ? '❤️' : '🤍')"
+            ></span>
+          </template>
         </div>
-
-        <div class="text-right">
-          <span class="text-[10px] md:text-xs text-[#b5a9df] uppercase tracking-wider font-bold block">スコア</span>
-          <span class="text-sm md:text-2xl font-black text-[#00f5d4] glow-text-cyan" x-text="$store.game.score.toLocaleString()"></span>
+        <div class="hp-track h-2 w-full">
+          <div class="hp-fill-teacher" :style="`width:${g.teacherHpPercent}%`"></div>
         </div>
       </div>
     </div>
 
-    <!-- Battle Arena Area -->
-    <div class="grid grid-cols-5 gap-2 sm:gap-4 md:gap-6 items-center">
-      <!-- Left side: Player (Teacher) -->
-      <div class="col-span-2 glass-panel p-2.5 sm:p-4 md:p-6 flex flex-col items-center gap-1.5 md:gap-3">
-        <span class="text-[10px] sm:text-xs font-bold text-[#b5a9df] tracking-widest uppercase">数学の女教師</span>
-        <div class="relative w-full aspect-[3/4] max-w-[95px] sm:max-w-[160px] md:max-w-[240px] bg-[#0b0914]/40 rounded-xl overflow-hidden">
-          <img
-            src="/images/女教師.png"
-            alt="数学の女教師"
-            class="w-full h-full object-contain"
-          />
-        </div>
-        <div class="w-full bg-[#130f24] rounded-full h-1 md:h-2.5 mt-1 border border-[#9b5de5]/10 overflow-hidden">
-          <div class="bg-gradient-to-r from-[#fee440] to-[#00f5d4] h-full rounded-full transition-all duration-300" :style="`width: ${($store.game.lives / 3) * 100}%`"></div>
-        </div>
-        <span class="text-[9px] sm:text-xs text-[#b5a9df]/70" x-text="`ライフ: ${$store.game.lives} / 3`"></span>
+    <!-- Question -->
+    <div class="glass-panel px-4 py-4 flex flex-col items-center gap-3">
+      <div class="flex items-center justify-center gap-2 text-3xl md:text-4xl font-black">
+        <span x-text="g.currentQuestion ? g.currentQuestion.num1 : '?'"></span>
+        <span class="text-[#9b5de5]">+</span>
+        <span x-text="g.currentQuestion ? g.currentQuestion.num2 : '?'"></span>
+        <span class="text-[#9b5de5]">=</span>
       </div>
-
-      <!-- Center: VS -->
-      <div class="col-span-1 flex flex-col items-center justify-center">
-        <span class="text-sm sm:text-2xl md:text-3xl font-black tracking-widest text-[#f15bb5] glow-text-pink animate-pulse">VS</span>
-      </div>
-
-      <!-- Right side: Enemy (Oni) -->
-      <div 
-        class="col-span-2 glass-panel p-2.5 sm:p-4 md:p-6 flex flex-col items-center gap-1.5 md:gap-3 relative overflow-hidden"
-        :class="{ 'animate-shake': $store.game.shakeOni }"
+      <div
+        class="min-h-[56px] w-full max-w-[240px] flex items-center justify-center rounded-12 border-2 px-4 py-2 text-3xl font-black tracking-widest transition-colors"
+        :class="g.userInput ? 'border-[#00f5d4] text-[#f3f0ff]' : 'border-[#9b5de5]/30 text-[#b5a9df]/40'"
       >
-        <!-- Floating Damage Overlay -->
-        <template x-for="t in $store.game.floatingTexts" :key="t.id">
-          <span 
-            class="floating-damage" 
-            :class="{ 'incorrect': t.type === 'incorrect' }"
-            :style="`left: ${t.x}%; top: ${t.y}%;`" 
-            x-text="t.text"
-          ></span>
-        </template>
-
-        <span class="text-[10px] sm:text-xs font-bold text-[#f15bb5] tracking-widest uppercase" x-text="getOniName($store.game.stage)"></span>
-        
-        <div class="relative w-full aspect-[3/4] max-w-[95px] sm:max-w-[160px] md:max-w-[240px] bg-[#0b0914]/40 rounded-xl overflow-hidden">
-          <!-- Dynamic Oni image path -->
-          <img 
-            :src="getOniImage($store.game.stage)" 
-            :alt="getOniName($store.game.stage)" 
-            class="w-full h-full object-contain transition-all duration-300"
-            :class="{ 'animate-explode': $store.game.oniHp === 0 }"
-          />
-
-          <!-- Explosion Shockwave and Flash Overlay -->
-          <template x-if="$store.game.oniHp === 0">
-            <div class="absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden">
-              <div class="shockwave-ring"></div>
-              <div class="explosion-flash"></div>
-            </div>
-          </template>
-        </div>
-
-        <!-- Oni HP Bar -->
-        <div class="w-full bg-[#130f24] rounded-full h-1 md:h-3.5 mt-1 border border-[#f15bb5]/10 overflow-hidden">
-          <div 
-            class="bg-gradient-to-r from-[#f15bb5] to-[#9b5de5] h-full transition-all duration-300" 
-            :style="`width: ${($store.game.oniHp / $store.game.oniMaxHp) * 100}%`"
-          ></div>
-        </div>
-        <span class="text-[9px] sm:text-xs text-[#b5a9df]/90 font-bold" x-text="`HP: ${$store.game.oniHp} / ${$store.game.oniMaxHp}`"></span>
+        <span x-text="g.userInput || '?'"></span>
       </div>
     </div>
 
-    <!-- Core Gameplay & Interaction Section -->
-    <div class="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 items-stretch">
-      <!-- Input Panel & Display -->
-      <div class="col-span-12 md:col-span-7 glass-panel flex flex-col justify-between gap-4 md:gap-6" style="padding: 10px !important;">
-        <!-- Question display card -->
-        <div class="flex-grow flex flex-col justify-center items-center py-4 md:py-6 bg-[#0b0914]/80 border border-[#9b5de5]/20 rounded-xl min-h-[120px] md:min-h-[160px] relative">
-          <span class="absolute top-2 left-3 text-[10px] md:text-xs font-bold text-[#b5a9df]/50" x-text="`第 ${$store.game.answersLog.length + 1} 問`"></span>
-          
-          <template x-if="$store.game.currentQuestion">
-            <div class="flex flex-col items-center gap-2 md:gap-4">
-              <!-- Equation -->
-              <div class="text-3xl md:text-5xl font-black tracking-wider text-center flex items-center gap-3">
-                <span x-text="$store.game.currentQuestion.num1"></span>
-                <span class="text-[#f15bb5]">+</span>
-                <span x-text="$store.game.currentQuestion.num2"></span>
-                <span class="text-[#fee440]">=</span>
-                
-                <!-- Answer block -->
-                <div class="inline-flex items-center min-w-[100px] md:min-w-[120px] px-3 py-1 bg-[#130f24] border border-[#f15bb5]/30 rounded-lg text-center justify-center min-h-[50px] md:min-h-[60px] text-transparent bg-clip-text bg-gradient-to-r from-[#00f5d4] to-[#00bbf9] glow-text-cyan relative">
-                  <span x-text="$store.game.userInput || ''"></span>
-                  <span class="absolute right-4 w-1.5 h-8 bg-[#00f5d4] animate-pulse" x-show="!$store.game.userInput"></span>
-                </div>
-              </div>
-            </div>
-          </template>
-        </div>
-
-        <div class="text-center text-xs text-[#b5a9df]/60">
-          <p>※キーボードの数字キー、Backspace、Enterキーもそのまま使用できます。</p>
-        </div>
-      </div>
-
-      <!-- Numeric keypad panel -->
-      <div class="col-span-12 md:col-span-5 glass-panel flex flex-col justify-between w-auto mx-3 md:mx-0 md:w-full my-2 md:my-0" style="padding: 10px !important;">
-        <div class="grid grid-cols-3 gap-3">
-          <!-- 7, 8, 9 -->
-          <button @click="$store.game.inputDigit('7')" class="h-18 sm:h-22 md:h-auto md:py-4 bg-[#130f24] hover:bg-[#9b5de5]/20 border border-[#9b5de5]/20 text-[#f3f0ff] font-black text-xl md:text-2xl rounded-xl transition-all hover:scale-105 active:scale-95 shadow-md">7</button>
-          <button @click="$store.game.inputDigit('8')" class="h-18 sm:h-22 md:h-auto md:py-4 bg-[#130f24] hover:bg-[#9b5de5]/20 border border-[#9b5de5]/20 text-[#f3f0ff] font-black text-xl md:text-2xl rounded-xl transition-all hover:scale-105 active:scale-95 shadow-md">8</button>
-          <button @click="$store.game.inputDigit('9')" class="h-18 sm:h-22 md:h-auto md:py-4 bg-[#130f24] hover:bg-[#9b5de5]/20 border border-[#9b5de5]/20 text-[#f3f0ff] font-black text-xl md:text-2xl rounded-xl transition-all hover:scale-105 active:scale-95 shadow-md">9</button>
-
-          <!-- 4, 5, 6 -->
-          <button @click="$store.game.inputDigit('4')" class="h-18 sm:h-22 md:h-auto md:py-4 bg-[#130f24] hover:bg-[#9b5de5]/20 border border-[#9b5de5]/20 text-[#f3f0ff] font-black text-xl md:text-2xl rounded-xl transition-all hover:scale-105 active:scale-95 shadow-md">4</button>
-          <button @click="$store.game.inputDigit('5')" class="h-18 sm:h-22 md:h-auto md:py-4 bg-[#130f24] hover:bg-[#9b5de5]/20 border border-[#9b5de5]/20 text-[#f3f0ff] font-black text-xl md:text-2xl rounded-xl transition-all hover:scale-105 active:scale-95 shadow-md">5</button>
-          <button @click="$store.game.inputDigit('6')" class="h-18 sm:h-22 md:h-auto md:py-4 bg-[#130f24] hover:bg-[#9b5de5]/20 border border-[#9b5de5]/20 text-[#f3f0ff] font-black text-xl md:text-2xl rounded-xl transition-all hover:scale-105 active:scale-95 shadow-md">6</button>
-
-          <!-- 1, 2, 3 -->
-          <button @click="$store.game.inputDigit('1')" class="h-18 sm:h-22 md:h-auto md:py-4 bg-[#130f24] hover:bg-[#9b5de5]/20 border border-[#9b5de5]/20 text-[#f3f0ff] font-black text-xl md:text-2xl rounded-xl transition-all hover:scale-105 active:scale-95 shadow-md">1</button>
-          <button @click="$store.game.inputDigit('2')" class="h-18 sm:h-22 md:h-auto md:py-4 bg-[#130f24] hover:bg-[#9b5de5]/20 border border-[#9b5de5]/20 text-[#f3f0ff] font-black text-xl md:text-2xl rounded-xl transition-all hover:scale-105 active:scale-95 shadow-md">2</button>
-          <button @click="$store.game.inputDigit('3')" class="h-18 sm:h-22 md:h-auto md:py-4 bg-[#130f24] hover:bg-[#9b5de5]/20 border border-[#9b5de5]/20 text-[#f3f0ff] font-black text-xl md:text-2xl rounded-xl transition-all hover:scale-105 active:scale-95 shadow-md">3</button>
-
-          <!-- C, 0, Enter -->
-          <button @click="$store.game.clearInput()" class="h-18 sm:h-22 md:h-auto md:py-4 bg-[#130f24] hover:bg-[#f15bb5]/20 border border-[#f15bb5]/20 text-[#f15bb5] font-black text-base md:text-lg rounded-xl transition-all hover:scale-105 active:scale-95 shadow-md">クリア</button>
-          <button @click="$store.game.inputDigit('0')" class="h-18 sm:h-22 md:h-auto md:py-4 bg-[#130f24] hover:bg-[#9b5de5]/20 border border-[#9b5de5]/20 text-[#f3f0ff] font-black text-xl md:text-2xl rounded-xl transition-all hover:scale-105 active:scale-95 shadow-md">0</button>
-          <button 
-            @click="$store.game.submitAnswer()" 
-            class="h-18 sm:h-22 md:h-auto md:py-4 btn-primary font-black text-base md:text-lg rounded-xl transition-all hover:scale-105 active:scale-95 shadow-md cursor-pointer"
-            :disabled="!$store.game.userInput || $store.game.loading"
-          >
-            決定
-          </button>
-        </div>
-      </div>
+    <!-- Numpad -->
+    <div class="grid grid-cols-3 gap-2">
+      <template x-for="n in [1,2,3,4,5,6,7,8,9]" :key="n">
+        <button type="button" class="key-btn h-14" @click="g.pressKey(n)" x-text="n"></button>
+      </template>
+      <button type="button" class="key-btn h-14 text-[#fee440]" @click="g.backspace()">⌫</button>
+      <button type="button" class="key-btn h-14" @click="g.pressKey(0)">0</button>
+      <button
+        type="button"
+        class="h-14 rounded-14 btn-primary font-black text-lg"
+        @click="g.submitAnswer()"
+      >決定</button>
     </div>
 
-    <!-- Active toxic mist element to trigger during mist flag -->
-    <div class="toxic-overlay" :class="{ 'animate-toxic': $store.game.showMist }"></div>
+    <!-- ===== Modals ===== -->
 
-    <!-- Full screen Overlay Modals for state changes -->
-    
-    <!-- 1. Stage Clear Modal -->
-    <template x-if="$store.game.stageCleared">
-      <div class="fixed inset-0 bg-[#0b0914]/90 backdrop-blur-md flex items-center justify-center z-50 p-6">
-        <div class="max-w-md w-full glass-panel p-8 text-center flex flex-col gap-6 border-[#00f5d4]/40 shadow-[0_0_30px_rgba(0,245,212,0.15)]">
-          <h2 class="text-3xl font-black text-[#00f5d4] glow-text-cyan uppercase tracking-widest">STAGE CLEAR!</h2>
-          <p class="text-[#b5a9df] text-sm">見事に鬼を退治しました！</p>
-          
-          <div class="bg-[#130f24] p-4 rounded-xl border border-[#9b5de5]/20 flex flex-col gap-2">
-            <div class="flex justify-between items-center text-sm">
-              <span class="text-[#b5a9df]">このステージの獲得:</span>
-              <span class="text-[#f3f0ff] font-black" x-text="`+${$store.game.lastStageScore.toLocaleString()}`"></span>
-            </div>
-            <div class="flex justify-between items-center text-sm">
-              <span class="text-[#b5a9df]">鬼撃破ボーナス:</span>
-              <span class="text-[#fee440] font-black" x-text="`+${$store.game.lastDefeatBonus.toLocaleString()}`"></span>
-            </div>
-            <div class="w-full h-px bg-[#9b5de5]/10 my-1"></div>
-            <div class="flex justify-between items-center">
-              <span class="text-sm text-[#b5a9df]">合計スコア:</span>
-              <span class="text-xl font-black text-[#00f5d4] glow-text-cyan" x-text="$store.game.score.toLocaleString()"></span>
-            </div>
+    <!-- Stage Clear -->
+    <template x-if="g.stageCleared">
+      <div class="fixed inset-0 z-50 flex items-center justify-center bg-[#0b0914]/80 backdrop-blur-sm px-4">
+        <div class="glass-panel modal-pop w-full max-w-sm p-6 flex flex-col items-center gap-4 text-center">
+          <h2 class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#fee440] to-[#f15bb5] glow-text-pink">STAGE CLEAR!</h2>
+          <p class="text-sm text-[#b5a9df]">ステージ <span x-text="g.stage"></span> を突破した！</p>
+          <div class="w-full flex flex-col gap-1 text-sm">
+            <div class="flex justify-between"><span class="text-[#b5a9df]">ステージ得点</span><span class="font-bold text-[#00f5d4]" x-text="'+' + g.lastStageScore.toLocaleString()"></span></div>
+            <div class="flex justify-between"><span class="text-[#b5a9df]">撃破ボーナス</span><span class="font-bold text-[#fee440]" x-text="'+' + g.lastDefeatBonus.toLocaleString()"></span></div>
+            <div class="mt-1 border-t border-[#9b5de5]/20 pt-1 flex justify-between"><span class="text-[#b5a9df]">合計スコア</span><span class="font-black text-lg text-[#f3f0ff]" x-text="g.score.toLocaleString()"></span></div>
           </div>
-
-          <button 
-            @click="$store.game.proceedToNextStage()" 
-            class="w-full btn-primary font-black py-3 text-lg tracking-wider"
-          >
-            次のステージへ進む
-          </button>
+          <button type="button" class="w-full btn-primary font-black py-3 text-lg" @click="g.proceedToNextStage()">次のステージへ！</button>
         </div>
       </div>
     </template>
 
-    <!-- 2. Game Over Modal -->
-    <template x-if="$store.game.gameOver">
-      <div class="fixed inset-0 bg-[#0b0914]/95 backdrop-blur-md flex items-center justify-center z-50 p-6">
-        <div class="max-w-md w-full glass-panel p-8 text-center flex flex-col gap-6 border-[#f15bb5]/40 shadow-[0_0_30px_rgba(241,91,181,0.15)]">
-          <h2 class="text-3xl font-black text-[#f15bb5] glow-text-pink uppercase tracking-widest">GAME OVER</h2>
-          <p class="text-[#b5a9df] text-sm">ライフがなくなってしまいました...</p>
-          
-          <div class="bg-[#130f24] p-4 rounded-xl border border-[#9b5de5]/20 flex flex-col gap-2">
-            <div class="flex justify-between items-center">
-              <span class="text-sm text-[#b5a9df]">最終到達ステージ:</span>
-              <span class="text-lg font-black text-[#fee440]" x-text="`STAGE ${$store.game.stage}`"></span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-sm text-[#b5a9df]">最終決定スコア:</span>
-              <span class="text-xl font-black text-[#00f5d4] glow-text-cyan" x-text="$store.game.score.toLocaleString()"></span>
-            </div>
-          </div>
-
-          <button 
-            @click="$store.game.goBackToTitle()" 
-            class="w-full btn-primary font-black py-3 text-lg tracking-wider"
-          >
-            タイトルに戻る
-          </button>
-        </div>
-      </div>
-    </template>
-
-    <!-- 3. Game Completed (ALL STAGES CLEARED) Modal -->
-    <template x-if="$store.game.gameCompleted">
-      <div class="fixed inset-0 bg-[#0b0914]/95 backdrop-blur-md flex items-center justify-center z-50 p-6">
-        <div class="max-w-md w-full glass-panel p-8 text-center flex flex-col gap-6 border-[#fee440]/40 shadow-[0_0_40px_rgba(254,228,64,0.15)]">
-          <span class="text-5xl">🏆</span>
-          <h2 class="text-3xl font-black text-[#fee440] text-shadow:0_0_10px_rgba(254,228,64,0.5) uppercase tracking-widest">CONGRATULATIONS!</h2>
-          <p class="text-[#b5a9df] text-sm">全12ステージの鬼をすべて撃破し、<br />ゲームクリアを達成しました！</p>
-          
-          <div class="bg-[#130f24] p-4 rounded-xl border border-[#9b5de5]/20 flex flex-col gap-2">
-            <div class="flex justify-between items-center">
-              <span class="text-sm text-[#b5a9df]">最終獲得スコア:</span>
-              <span class="text-2xl font-black text-[#00f5d4] glow-text-cyan" x-text="$store.game.score.toLocaleString()"></span>
-            </div>
-          </div>
-
-          <div class="flex flex-col gap-3">
-            <a 
-              href="/ranking" 
-              class="w-full btn-primary font-black py-3 text-lg tracking-wider"
-            >
-              ランキングを見る
-            </a>
-            <button 
-              @click="$store.game.goBackToTitle()" 
-              class="w-full py-2 text-sm text-[#b5a9df] hover:text-[#f3f0ff] transition-colors"
-            >
-              タイトルに戻る
-            </button>
+    <!-- Game Completed (All Clear) -->
+    <template x-if="g.gameCompleted">
+      <div class="fixed inset-0 z-50 flex items-center justify-center bg-[#0b0914]/85 backdrop-blur-sm px-4">
+        <div class="glass-panel modal-pop w-full max-w-sm p-6 flex flex-col items-center gap-4 text-center">
+          <div class="text-5xl is-pulsing">🏆</div>
+          <h2 class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#fee440] via-[#f15bb5] to-[#9b5de5] glow-text-purple">ALL CLEAR!</h2>
+          <p class="text-sm text-[#b5a9df]">全12ステージの鬼を退治した！<br />あなたは真の計算マスターだ！</p>
+          <div class="text-3xl font-black text-[#00f5d4]" x-text="g.score.toLocaleString() + ' pt'"></div>
+          <div class="w-full flex flex-col gap-2">
+            <button type="button" class="w-full btn-primary font-black py-3 text-lg" @click="g.goRanking()">ランキングを見る</button>
+            <button type="button" class="w-full btn-ghost font-bold py-2.5" @click="g.playAgain()">もう一度あそぶ</button>
           </div>
         </div>
       </div>
     </template>
 
+    <!-- Game Over -->
+    <template x-if="g.gameOver">
+      <div class="fixed inset-0 z-50 flex items-center justify-center bg-[#0b0914]/85 backdrop-blur-sm px-4">
+        <div class="glass-panel modal-pop w-full max-w-sm p-6 flex flex-col items-center gap-4 text-center">
+          <div class="text-5xl">💀</div>
+          <h2 class="text-3xl font-black text-[#f15bb5] glow-text-pink">GAME OVER</h2>
+          <p class="text-sm text-[#b5a9df]">ステージ <span x-text="g.stage"></span> で力尽きた…</p>
+          <div class="text-3xl font-black text-[#00f5d4]" x-text="g.score.toLocaleString() + ' pt'"></div>
+          <div class="w-full flex flex-col gap-2">
+            <button type="button" class="w-full btn-primary font-black py-3 text-lg" @click="g.goRanking()">ランキングを見る</button>
+            <button type="button" class="w-full btn-ghost font-bold py-2.5" @click="g.playAgain()">もう一度あそぶ</button>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- Toxic damage overlay -->
+    <template x-if="g.takingDamage">
+      <div class="toxic-overlay"></div>
+    </template>
   </div>
 </Layout>
 
 <script>
   import Alpine from 'alpinejs';
   import { gameStore } from '../scripts/game';
-  
-  // Register Alpine store for state preservation across transitions
+
   if (!Alpine.store('game')) {
     Alpine.store('game', gameStore());
   }

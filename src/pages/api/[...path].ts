@@ -1,363 +1,296 @@
 import { Hono } from 'hono';
+import type { APIContext } from 'astro';
 import { encrypt, decrypt } from '../../utils/crypto';
 import { query } from '../../utils/db';
 
-const app = new Hono().basePath('/api');
+export const prerender = false;
 
-// Oni max HP per stage. Damage per correct answer is roughly stage*100, so this
-// targets ~7 correct answers to clear a stage (see openspec design.md).
 const ONI_HP_PER_STAGE = 700;
+const QUESTIONS_PER_BATCH = 5;
+const MAX_STAGE = 12;
 
-interface Question {
-  id: number;
-  num1: number;
-  num2: number;
-  answer: number;
+type Question = { num1: number; num2: number; answer: number };
+type PlayToken = { stage: number; questions: Question[]; carriedScore: number };
+type CarryToken = { carriedScore: number; nextStage: number };
+
+function randInt(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-// Generate a random math question according to stage difficulty rules
-function generateQuestion(stage: number, id: number): Question {
-  let num1 = 0;
-  let num2 = 0;
+// Generate two numbers (da >= db digits) such that no column produces a carry.
+function genNoCarry(da: number, db: number): { a: number; b: number } {
+  const aDigits: number[] = [];
+  const bDigits: number[] = [];
+  for (let i = 0; i < da; i++) {
+    const hasB = i < db;
+    const aMin = i === da - 1 ? 1 : 0;
+    const bMin = hasB && i === db - 1 ? 1 : 0;
+    const bMax = hasB ? Math.min(9, 9 - aMin) : 0;
+    const bDigit = hasB ? randInt(bMin, Math.max(bMin, bMax)) : 0;
+    const aMax = Math.min(9, 9 - bDigit);
+    const aDigit = randInt(aMin, Math.max(aMin, aMax));
+    aDigits[i] = aDigit;
+    bDigits[i] = bDigit;
+  }
+  let a = 0;
+  let b = 0;
+  for (let i = da - 1; i >= 0; i--) a = a * 10 + aDigits[i];
+  for (let i = db - 1; i >= 0; i--) b = b * 10 + bDigits[i];
+  return { a, b };
+}
 
+function genQuestion(stage: number): Question {
+  let a = 0;
+  let b = 0;
   switch (stage) {
     case 1:
-      // 1桁 + 1桁 (繰り上がりなし、和が9以下)
-      num1 = Math.floor(Math.random() * 8) + 1; // 1..8
-      num2 = Math.floor(Math.random() * (9 - num1)) + 1; // 1..(9-num1)
+      a = randInt(1, 8);
+      b = randInt(1, 9 - a);
       break;
     case 2:
-      // 1桁 + 1桁 (制限なし、繰り上がり可能)
-      num1 = Math.floor(Math.random() * 9) + 1; // 1..9
-      num2 = Math.floor(Math.random() * 9) + 1; // 1..9
+      a = randInt(1, 9);
+      b = randInt(1, 9);
       break;
     case 3:
-      // 1桁 + 2桁 (繰り上がりなし)
-      num1 = Math.floor(Math.random() * 9) + 1; // 1..9
-      const tens3 = Math.floor(Math.random() * 9) + 1; // 1..9
-      const units3 = Math.floor(Math.random() * (10 - num1)); // 0..9-num1
-      num2 = tens3 * 10 + units3;
-      if (Math.random() > 0.5) {
-        const tmp = num1;
-        num1 = num2;
-        num2 = tmp;
-      }
+      ({ a, b } = genNoCarry(2, 1));
       break;
     case 4:
-      // 1桁 + 2桁 (制限なし)
-      num1 = Math.floor(Math.random() * 9) + 1; // 1..9
-      num2 = Math.floor(Math.random() * 90) + 10; // 10..99
-      if (Math.random() > 0.5) {
-        const tmp = num1;
-        num1 = num2;
-        num2 = tmp;
-      }
+      a = randInt(10, 99);
+      b = randInt(1, 9);
       break;
     case 5:
-      // 2桁 + 2桁 (繰り上がりなし)
-      const u1_5 = Math.floor(Math.random() * 9) + 1;
-      const u2_5 = Math.floor(Math.random() * (10 - u1_5));
-      const t1_5 = Math.floor(Math.random() * 8) + 1;
-      const t2_5 = Math.floor(Math.random() * (9 - t1_5)) + 1;
-      num1 = t1_5 * 10 + u1_5;
-      num2 = t2_5 * 10 + u2_5;
+      ({ a, b } = genNoCarry(2, 2));
       break;
     case 6:
-      // 2桁 + 2桁 (制限なし)
-      num1 = Math.floor(Math.random() * 90) + 10;
-      num2 = Math.floor(Math.random() * 90) + 10;
+      a = randInt(10, 99);
+      b = randInt(10, 99);
       break;
     case 7:
-      // 3桁 + 2桁 (繰り上がりなし)
-      const u1_7 = Math.floor(Math.random() * 9) + 1;
-      const u2_7 = Math.floor(Math.random() * (10 - u1_7));
-      const t1_7 = Math.floor(Math.random() * 9) + 1;
-      const t2_7 = Math.floor(Math.random() * (10 - t1_7));
-      const h1_7 = Math.floor(Math.random() * 9) + 1;
-      num1 = h1_7 * 100 + t1_7 * 10 + u1_7;
-      num2 = t2_7 * 10 + u2_7;
-      if (Math.random() > 0.5) {
-        const tmp = num1;
-        num1 = num2;
-        num2 = tmp;
-      }
+      ({ a, b } = genNoCarry(3, 2));
       break;
     case 8:
-      // 3桁 + 2桁 (制限なし)
-      num1 = Math.floor(Math.random() * 900) + 100;
-      num2 = Math.floor(Math.random() * 90) + 10;
-      if (Math.random() > 0.5) {
-        const tmp = num1;
-        num1 = num2;
-        num2 = tmp;
-      }
+      a = randInt(100, 999);
+      b = randInt(10, 99);
       break;
     case 9:
-      // 3桁 + 3桁 (繰り上がりなし, 和が1000以下)
-      const u1_9 = Math.floor(Math.random() * 9) + 1;
-      const u2_9 = Math.floor(Math.random() * (10 - u1_9));
-      const t1_9 = Math.floor(Math.random() * 9) + 1;
-      const t2_9 = Math.floor(Math.random() * (10 - t1_9));
-      const h1_9 = Math.floor(Math.random() * 8) + 1;
-      const h2_9 = Math.floor(Math.random() * (9 - h1_9)) + 1;
-      num1 = h1_9 * 100 + t1_9 * 10 + u1_9;
-      num2 = h2_9 * 100 + t2_9 * 10 + u2_9;
+      ({ a, b } = genNoCarry(3, 3));
       break;
     case 10:
-      // 3桁 + 3桁 (和が1000以下)
-      num1 = Math.floor(Math.random() * 800) + 100; // 100..899
-      num2 = Math.floor(Math.random() * (1001 - num1 - 100)) + 100; // 100..1000-num1
+      do {
+        a = randInt(100, 999);
+        b = randInt(100, 999);
+      } while (a + b > 1000);
       break;
     case 11:
-      // 3桁 + 3桁 (制限なし)
-      num1 = Math.floor(Math.random() * 900) + 100;
-      num2 = Math.floor(Math.random() * 900) + 100;
+      a = randInt(100, 999);
+      b = randInt(100, 999);
       break;
     case 12:
     default:
-      // 1〜999 + 1〜999 (制限なし)
-      num1 = Math.floor(Math.random() * 999) + 1;
-      num2 = Math.floor(Math.random() * 999) + 1;
+      a = randInt(1, 999);
+      b = randInt(1, 999);
       break;
   }
-
-  return {
-    id,
-    num1,
-    num2,
-    answer: num1 + num2
-  };
+  return { num1: a, num2: b, answer: a + b };
 }
 
-// 1. POST /api/stages/start - Initialize a stage and generate the first 5 questions
+function genBatch(stage: number, count = QUESTIONS_PER_BATCH): Question[] {
+  return Array.from({ length: count }, () => genQuestion(stage));
+}
+
+// Strip answers before sending to the client.
+function publicQuestions(qs: Question[]) {
+  return qs.map((q) => ({ num1: q.num1, num2: q.num2 }));
+}
+
+const app = new Hono().basePath('/api');
+
 app.post('/stages/start', async (c) => {
+  let body: any = {};
   try {
-    const body = await c.req.json();
-    const stage = parseInt(body.stage, 10) || 1;
-    const previousToken = body.previous_token;
-
-    let accumulatedScore = 0;
-
-    // Verify previous token if stage > 1 to prevent arbitrary starting scores
-    if (stage > 1) {
-      if (!previousToken) {
-        return c.json({ error: 'Missing previous stage token' }, 400);
-      }
-      const prevData = decrypt(previousToken);
-      if (!prevData || prevData.stage !== stage - 1 || !prevData.cleared) {
-        return c.json({ error: 'Invalid or uncleared previous stage token' }, 400);
-      }
-      accumulatedScore = prevData.final_score || 0;
-    }
-
-    const questions: Question[] = [];
-    for (let i = 0; i < 5; i++) {
-      questions.push(generateQuestion(stage, i + 1));
-    }
-
-    const tokenData = {
-      stage,
-      questions,
-      accumulatedScore,
-      createdAt: Date.now()
-    };
-
-    const sessionToken = encrypt(tokenData);
-
-    return c.json({
-      questions: questions.map(q => ({ id: q.id, num1: q.num1, num2: q.num2 })),
-      session_token: sessionToken
-    });
-  } catch (err) {
-    console.error('Error starting stage:', err);
-    return c.json({ error: 'Internal Server Error' }, 500);
+    body = await c.req.json();
+  } catch {
+    body = {};
   }
+  let stage = Number(body.stage) || 1;
+  let carriedScore = 0;
+
+  if (body.carry_token) {
+    const carry = decrypt<CarryToken>(body.carry_token);
+    if (carry) {
+      carriedScore = Number(carry.carriedScore) || 0;
+      stage = carry.nextStage;
+    }
+  }
+  if (stage < 1) stage = 1;
+  if (stage > MAX_STAGE) stage = MAX_STAGE;
+
+  const questions = genBatch(stage);
+  const token = encrypt({ stage, questions, carriedScore } as PlayToken);
+
+  return c.json({
+    stage,
+    questions: publicQuestions(questions),
+    oni_max_hp: stage * ONI_HP_PER_STAGE,
+    session_token: token,
+  });
 });
 
-// 2. POST /api/stages/more - Generate 5 more questions for the session
 app.post('/stages/more', async (c) => {
-  try {
-    const body = await c.req.json();
-    const sessionToken = body.session_token;
-
-    if (!sessionToken) {
-      return c.json({ error: 'Missing session token' }, 400);
-    }
-
-    const tokenData = decrypt(sessionToken);
-    if (!tokenData || !tokenData.questions || !tokenData.stage) {
-      return c.json({ error: 'Invalid session token' }, 400);
-    }
-
-    const stage = tokenData.stage;
-    const currentQuestions = tokenData.questions;
-    const nextStartId = currentQuestions.length + 1;
-
-    const newQuestions: Question[] = [];
-    for (let i = 0; i < 5; i++) {
-      newQuestions.push(generateQuestion(stage, nextStartId + i));
-    }
-
-    const updatedTokenData = {
-      ...tokenData,
-      questions: [...currentQuestions, ...newQuestions]
-    };
-
-    const newSessionToken = encrypt(updatedTokenData);
-
-    return c.json({
-      questions: newQuestions.map(q => ({ id: q.id, num1: q.num1, num2: q.num2 })),
-      session_token: newSessionToken
-    });
-  } catch (err) {
-    console.error('Error fetching more questions:', err);
-    return c.json({ error: 'Internal Server Error' }, 500);
+  const body = await c.req.json().catch(() => ({}));
+  const token = decrypt<PlayToken>(body.session_token);
+  if (!token) {
+    return c.json({ error: 'invalid_token' }, 400);
   }
+  const more = genBatch(token.stage);
+  const merged: PlayToken = {
+    stage: token.stage,
+    questions: [...token.questions, ...more],
+    carriedScore: token.carriedScore,
+  };
+  return c.json({
+    questions: publicQuestions(more),
+    session_token: encrypt(merged),
+  });
 });
 
-// 3. POST /api/stages/clear - Verify answers, calculate score, and persist results
 app.post('/stages/clear', async (c) => {
-  try {
-    const body = await c.req.json();
-    const { session_token, answers, username, player_id, is_game_over } = body;
-
-    if (!session_token || !answers || !username || !player_id) {
-      return c.json({ error: 'Missing required parameters' }, 400);
-    }
-
-    const tokenData = decrypt(session_token);
-    if (!tokenData || !tokenData.questions || !tokenData.stage) {
-      return c.json({ error: 'Invalid session token' }, 400);
-    }
-
-    const stage = tokenData.stage;
-    const generatedQuestions = tokenData.questions;
-    const accumulatedScore = tokenData.accumulatedScore || 0;
-
-    // Check that we didn't receive more answers than questions generated
-    if (answers.length > generatedQuestions.length) {
-      return c.json({ error: 'Discrepancy in answers length' }, 400);
-    }
-
-    let stageScore = 0;
-    let totalDamage = 0;
-    let lives = 3;
-    const verifiedLogs: Array<{ num1: number, num2: number, user_answer: number, is_correct: boolean, time_taken: number }> = [];
-
-    // Verify each answer
-    for (let i = 0; i < answers.length; i++) {
-      const uAns = answers[i];
-      const gQuest = generatedQuestions[i];
-
-      // Validate matching question numbers
-      if (uAns.num1 !== gQuest.num1 || uAns.num2 !== gQuest.num2) {
-        return c.json({ error: 'Submitted question does not match generated question' }, 400);
-      }
-
-      const isCorrect = uAns.user_answer === gQuest.answer;
-      
-      let questionScore = 0;
-      if (isCorrect) {
-        const baseScore = stage * 100;
-        let timeBonus = 0;
-        if (uAns.time_taken < 10 && uAns.time_taken >= 0) {
-          timeBonus = ((10 - uAns.time_taken) * stage) / 10;
-        }
-        questionScore = Math.round(baseScore + timeBonus);
-        stageScore += questionScore;
-        totalDamage += questionScore;
-      } else {
-        lives--;
-      }
-
-      verifiedLogs.push({
-        num1: gQuest.num1,
-        num2: gQuest.num2,
-        user_answer: uAns.user_answer,
-        is_correct: isCorrect,
-        time_taken: uAns.time_taken
-      });
-    }
-
-    // Determine final score and clear status
-    const oniMaxHp = stage * ONI_HP_PER_STAGE;
-    const isStageCleared = !is_game_over && lives > 0 && totalDamage >= oniMaxHp;
-    
-    let defeatBonus = 0;
-    if (isStageCleared) {
-      defeatBonus = Math.round(oniMaxHp / 2);
-    }
-
-    const stageTotalScore = stageScore + defeatBonus;
-    const finalScore = accumulatedScore + stageTotalScore;
-
-    // TODO(security): Parameterized query prevents SQL injection when inserting scores
-    const scoreResult = await query(
-      `INSERT INTO scores (player_id, username, score, stage) VALUES ($1, $2, $3, $4) RETURNING id`,
-      [player_id, username, finalScore, isStageCleared ? stage + 1 : stage]
-    );
-    const scoreId = scoreResult.rows[0].id;
-
-    // Asynchronously insert question logs to keep the response fast (non-blocking)
-    const logBulkInsert = async () => {
-      try {
-        for (const log of verifiedLogs) {
-          // TODO(security): Parameterized query prevents SQL injection when inserting question logs
-          await query(
-            `INSERT INTO question_logs (score_id, num1, num2, user_answer, is_correct, time_taken) VALUES ($1, $2, $3, $4, $5, $6)`,
-            [scoreId, log.num1, log.num2, log.user_answer, log.is_correct, log.time_taken]
-          );
-        }
-      } catch (err) {
-        console.error('Failed to save question logs:', err);
-      }
-    };
-    logBulkInsert();
-
-    if (isStageCleared) {
-      // Generate a next stage token
-      const nextStageTokenData = {
-        stage: stage,
-        cleared: true,
-        final_score: finalScore,
-        createdAt: Date.now()
-      };
-      const nextStageToken = encrypt(nextStageTokenData);
-
-      return c.json({
-        verified: true,
-        final_score: finalScore,
-        stage_score: stageScore,
-        defeat_bonus: defeatBonus,
-        next_stage_token: nextStageToken,
-        is_game_over: false
-      });
-    } else {
-      return c.json({
-        verified: true,
-        final_score: finalScore,
-        stage_score: stageScore,
-        defeat_bonus: 0,
-        is_game_over: true
-      });
-    }
-  } catch (err) {
-    console.error('Error verifying stage clear:', err);
-    return c.json({ error: 'Internal Server Error' }, 500);
+  const body = await c.req.json().catch(() => ({}));
+  const token = decrypt<PlayToken>(body.session_token);
+  if (!token) {
+    return c.json({ error: 'invalid_token', verified: false }, 400);
   }
+
+  const stage = token.stage;
+  const oniMaxHp = stage * ONI_HP_PER_STAGE;
+  const isGameOver = body.is_game_over === true;
+  const answers: any[] = Array.isArray(body.answers) ? body.answers : [];
+
+  // Build a multiset of generated (num1,num2) pairs for verification.
+  const pool = new Map<string, number>();
+  for (const q of token.questions) {
+    const key = `${q.num1}_${q.num2}`;
+    pool.set(key, (pool.get(key) || 0) + 1);
+  }
+
+  let verified = true;
+  let stageScore = 0;
+  const verifiedLogs: {
+    num1: number;
+    num2: number;
+    user_answer: number;
+    is_correct: boolean;
+    time_taken: number;
+  }[] = [];
+
+  for (const ans of answers) {
+    const num1 = Number(ans.num1);
+    const num2 = Number(ans.num2);
+    const userAnswer = Number(ans.user_answer);
+    let t = Number(ans.time_taken);
+    if (!Number.isFinite(t) || t < 0) t = 10;
+
+    const key = `${num1}_${num2}`;
+    const remaining = pool.get(key) || 0;
+    if (remaining <= 0) {
+      // Answer references a question the server never generated -> tampering.
+      verified = false;
+      continue;
+    }
+    pool.set(key, remaining - 1);
+
+    const isCorrect = userAnswer === num1 + num2;
+    if (isCorrect) {
+      const baseScore = stage * 100;
+      const timeBonus = t < 10 ? ((10 - t) * stage) / 10 : 0;
+      stageScore += Math.round(baseScore + timeBonus);
+    }
+    verifiedLogs.push({
+      num1,
+      num2,
+      user_answer: userAnswer,
+      is_correct: isCorrect,
+      time_taken: t,
+    });
+  }
+
+  const defeated = !isGameOver && stageScore >= oniMaxHp;
+  const defeatBonus = defeated ? Math.round(oniMaxHp / 2) : 0;
+  const finalCumulative = token.carriedScore + stageScore + defeatBonus;
+  const gameCompleted = defeated && stage >= MAX_STAGE;
+  const terminal = isGameOver || gameCompleted;
+
+  let carryToken: string | null = null;
+  if (defeated && !gameCompleted) {
+    carryToken = encrypt({
+      carriedScore: finalCumulative,
+      nextStage: stage + 1,
+    } as CarryToken);
+  }
+
+  let scoreId: number | null = null;
+  if (terminal) {
+    const playerId = String(body.player_id || 'anonymous').slice(0, 255);
+    const username = String(body.username || 'ゲスト').slice(0, 50);
+    const reachedStage = gameCompleted ? MAX_STAGE : stage;
+    try {
+      const result = await query(
+        'INSERT INTO scores (player_id, username, score, stage) VALUES ($1, $2, $3, $4) RETURNING id',
+        [playerId, username, finalCumulative, reachedStage]
+      );
+      scoreId = result.rows[0]?.id ?? null;
+
+      // Async (non-blocking) bulk insert of question logs.
+      if (scoreId && verifiedLogs.length > 0) {
+        const values: any[] = [];
+        const placeholders = verifiedLogs
+          .map((log, i) => {
+            const o = i * 6;
+            values.push(
+              scoreId,
+              log.num1,
+              log.num2,
+              log.user_answer,
+              log.is_correct,
+              log.time_taken
+            );
+            return `($${o + 1}, $${o + 2}, $${o + 3}, $${o + 4}, $${o + 5}, $${o + 6})`;
+          })
+          .join(', ');
+        void query(
+          `INSERT INTO question_logs (score_id, num1, num2, user_answer, is_correct, time_taken) VALUES ${placeholders}`,
+          values
+        ).catch((err) => console.error('question_logs insert failed', err));
+      }
+    } catch (err) {
+      console.error('score insert failed', err);
+    }
+  }
+
+  return c.json({
+    verified,
+    cleared: defeated,
+    is_game_over: isGameOver,
+    game_completed: gameCompleted,
+    stage_score: stageScore,
+    defeat_bonus: defeatBonus,
+    final_score: finalCumulative,
+    oni_max_hp: oniMaxHp,
+    carry_token: carryToken,
+    score_id: scoreId,
+  });
 });
 
-// 4. GET /api/scores - Retrieve top 10 rankings
 app.get('/scores', async (c) => {
   try {
     const result = await query(
-      `SELECT username, score, stage, created_at FROM scores ORDER BY score DESC, stage DESC LIMIT 10`
+      'SELECT username, score, stage, created_at FROM scores ORDER BY score DESC, stage DESC, created_at ASC LIMIT 10'
     );
-    return c.json({ rankings: result.rows });
+    return c.json({ scores: result.rows });
   } catch (err) {
-    console.error('Error fetching rankings:', err);
-    return c.json({ error: 'Internal Server Error' }, 500);
+    console.error('scores fetch failed', err);
+    return c.json({ scores: [] });
   }
 });
 
-export const ALL = (context: any) => app.fetch(context.request);
+export const ALL = (context: APIContext) => app.fetch(context.request);

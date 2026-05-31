@@ -1,105 +1,164 @@
+// Low-latency sound effects via Web Audio API + persistent BGM via <audio> element.
+
+const SE_FILES = {
+  keypad: 'テンキー',
+  submit: '決定ボタンを押す',
+  correct: 'クイズ正解',
+  incorrect: 'クイズ不正解',
+  cancel: 'キャンセル',
+  stage_intro: 'ステージ入り',
+  stage_intro_mid: 'ステージ途中入り',
+  oni_attack: '鬼攻撃',
+  laser: 'ビーム砲',
+  charge: '光玉溜め',
+  growl1: '鬼鳴き声1',
+  growl2: '鬼鳴き声2',
+  growl3: '鬼鳴き声3',
+  growl4: '鬼鳴き声4',
+  growl5: '鬼鳴き声5',
+  growl6: '鬼鳴き声6',
+};
+
+// BGM track key -> filename (without extension).
+const BGM_FILES = {
+  home: 'HOME-BGM',
+  clear: 'クリア画面',
+  ranking: '記録画面-BGM',
+  stage1: 'ステージ1-1',
+  stage2: 'ステージ2-1',
+  stage3: 'ステージ3-1',
+  stage4: 'ステージ4-1',
+  stage5: 'ステージ5',
+  stage6: 'ステージ6',
+  stage7: 'ステージ7',
+  stage8: 'ステージ8',
+  stage9: 'ステージ9',
+  stage10: 'ステージ10',
+  stage11: 'ステージ11',
+  stage12: 'ステージ12',
+};
+
+const SOUND_PATH = '/sounds/';
+
 class AudioManager {
   constructor() {
     this.ctx = null;
-    this.buffers = {};
-    
-    // Map of SE name to public URL path
-    this.sounds = {
-      keypad: '/sounds/テンキー.mp3',
-      submit: '/sounds/決定ボタンを押す.mp3',
-      correct: '/sounds/クイズ正解.mp3',
-      incorrect: '/sounds/クイズ不正解.mp3',
-      cancel: '/sounds/キャンセル.mp3',
-      stage_intro: '/sounds/ステージ入り.mp3',
-      stage_intro_mid: '/sounds/ステージ途中入り.mp3',
-      oni_attack: '/sounds/鬼攻撃.mp3',
-      laser: '/sounds/ビーム砲.mp3',
-      charge: '/sounds/光玉溜め.mp3',
-      growl1: '/sounds/鬼鳴き声1.mp3',
-      growl2: '/sounds/鬼鳴き声2.mp3',
-      growl3: '/sounds/鬼鳴き声3.mp3',
-      growl4: '/sounds/鬼鳴き声4.mp3',
-      growl5: '/sounds/鬼鳴き声5.mp3',
-      growl6: '/sounds/鬼鳴き声6.mp3',
-    };
+    this.seGain = null;
+    this.buffers = new Map();
+    this.currentBgmKey = null;
+    this.muted = false;
+    this.preloaded = false;
+    this._unlocked = false;
   }
 
-  /**
-   * Initializes the AudioContext and starts fetching/decoding SE files.
-   * This must be called from a user gesture event listener (e.g. click).
-   */
-  init() {
-    if (this.ctx) return;
-
-    try {
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      this.ctx = new AudioContextClass();
-    } catch (e) {
-      console.error('Web Audio API is not supported in this browser', e);
-      return;
-    }
-
-    // Prefetch and cache sound files in memory
-    Object.entries(this.sounds).forEach(([name, path]) => {
-      fetch(path)
-        .then(res => {
-          if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-          return res.arrayBuffer();
-        })
-        .then(arrayBuffer => {
-          return this.ctx.decodeAudioData(
-            arrayBuffer,
-            (buffer) => {
-              this.buffers[name] = buffer;
-            },
-            (err) => {
-              console.error(`Error decoding audio data for ${name}:`, err);
-            }
-          );
-        })
-        .catch(err => {
-          console.error(`Failed to load sound: ${name} (${path})`, err);
-        });
-    });
+  get bgmEl() {
+    if (typeof document === 'undefined') return null;
+    return document.getElementById('bgm-audio');
   }
 
-  /**
-   * Resumes the AudioContext if it is suspended by the browser.
-   */
-  async resume() {
-    if (this.ctx && this.ctx.state === 'suspended') {
-      await this.ctx.resume();
-    }
-  }
-
-  /**
-   * Plays a cached sound effect with zero delay.
-   */
-  play(name) {
+  // Must be called from a user gesture to satisfy autoplay policies.
+  unlock() {
+    if (typeof window === 'undefined') return;
     if (!this.ctx) {
-      // Lazy init if AudioContext exists on window
-      return;
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx) {
+        this.ctx = new Ctx();
+        this.seGain = this.ctx.createGain();
+        this.seGain.gain.value = this.muted ? 0 : 0.9;
+        this.seGain.connect(this.ctx.destination);
+      }
     }
-    
-    // Ensure context is running
-    this.resume();
-
-    const buffer = this.buffers[name];
-    if (!buffer) {
-      console.warn(`Sound buffer for "${name}" is not loaded yet.`);
-      return;
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume().catch(() => {});
     }
+    this._unlocked = true;
+    if (!this.preloaded) this.preloadAll();
+  }
 
+  async preloadAll() {
+    if (this.preloaded || !this.ctx) return;
+    this.preloaded = true;
+    await Promise.all(
+      Object.entries(SE_FILES).map(([key, file]) => this._loadBuffer(key, file))
+    );
+  }
+
+  async _loadBuffer(key, file) {
+    if (this.buffers.has(key) || !this.ctx) return;
     try {
-      const source = this.ctx.createBufferSource();
-      source.buffer = buffer;
-      source.connect(this.ctx.destination);
-      source.start(0);
+      const res = await fetch(`${SOUND_PATH}${encodeURIComponent(file)}.mp3`);
+      const arr = await res.arrayBuffer();
+      const buf = await this.ctx.decodeAudioData(arr);
+      this.buffers.set(key, buf);
     } catch (e) {
-      console.error(`Failed to play sound "${name}":`, e);
+      // Missing/undecodable file: skip silently so gameplay isn't blocked.
     }
+  }
+
+  playSE(name) {
+    if (this.muted || !this.ctx || !this.seGain) return;
+    const buf = this.buffers.get(name);
+    if (!buf) return;
+    if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(this.seGain);
+    src.start(0);
+  }
+
+  playRandomGrowl() {
+    const n = 1 + Math.floor(Math.random() * 6);
+    this.playSE(`growl${n}`);
+  }
+
+  playBGM(key) {
+    const el = this.bgmEl;
+    if (!el) return;
+    const file = BGM_FILES[key];
+    if (!file) return;
+    if (this.currentBgmKey === key && !el.paused) return;
+    this.currentBgmKey = key;
+    const url = `${SOUND_PATH}${encodeURIComponent(file)}.mp3`;
+    if (!el.src.endsWith(encodeURIComponent(file) + '.mp3')) {
+      el.src = url;
+    }
+    el.loop = true;
+    el.volume = this.muted ? 0 : 0.45;
+    if (this._unlocked) {
+      el.play().catch(() => {});
+    }
+  }
+
+  bgmForStage(stage) {
+    return `stage${Math.min(Math.max(stage, 1), 12)}`;
+  }
+
+  stopBGM() {
+    const el = this.bgmEl;
+    if (el) {
+      el.pause();
+    }
+    this.currentBgmKey = null;
+  }
+
+  setMuted(muted) {
+    this.muted = muted;
+    if (this.seGain) this.seGain.gain.value = muted ? 0 : 0.9;
+    const el = this.bgmEl;
+    if (el) el.volume = muted ? 0 : 0.45;
+  }
+
+  toggleMute() {
+    this.setMuted(!this.muted);
+    return this.muted;
   }
 }
 
-export const audioManager = new AudioManager();
-export default audioManager;
+export function audioManager() {
+  if (typeof window !== 'undefined') {
+    if (!window.__audioManager) window.__audioManager = new AudioManager();
+    return window.__audioManager;
+  }
+  // SSR fallback (no audio).
+  return new AudioManager();
+}
