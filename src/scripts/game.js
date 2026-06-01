@@ -15,7 +15,15 @@ export function gameStore() {
   return {
     // identity
     playerId: '',
-    username: '',
+    // Nickname typed on the end screen (prefilled from the last one this
+    // session). Empty -> a player_id-derived guest name is used on the server.
+    nickname: '',
+
+    // ranking submission flow
+    submitting: false,
+    submitted: false,
+    submitError: '',
+    savedName: '',
 
     // run state
     started: false,
@@ -87,8 +95,17 @@ export function gameStore() {
           localStorage.setItem('player_id', pid);
         }
         this.playerId = pid;
-        this.username = localStorage.getItem('username') || '';
       }
+      // Prefill the nickname with the last one entered this session.
+      if (typeof sessionStorage !== 'undefined') {
+        this.nickname = sessionStorage.getItem('nickname') || '';
+      }
+    },
+
+    // Display name shown/used when the player registers without typing one.
+    get defaultGuestName() {
+      const tail = (this.playerId || '').replace(/[^0-9a-zA-Z]/g, '').slice(-4) || '0000';
+      return `ゲスト-${tail}`;
     },
 
     // ---- helpers ----
@@ -146,14 +163,14 @@ export function gameStore() {
       this.specialGaugeDisplay = 0;
       this.cutIn = false;
       this.superAttacking = false;
+      this.submitting = false;
+      this.submitted = false;
+      this.submitError = '';
+      this.savedName = '';
       if (this.audio) this.audio.playBGM('home');
     },
 
-    async startNewGame(name) {
-      this.username = name;
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('username', name);
-      }
+    async startNewGame() {
       if (this.audio) this.audio.unlock();
       this.started = true;
       this.score = 0;
@@ -361,8 +378,6 @@ export function gameStore() {
           session_token: this.sessionToken,
           answers: this.answersLog,
           is_game_over: false,
-          player_id: this.playerId,
-          username: this.username,
         });
       } catch (e) {
         data = null;
@@ -410,16 +425,49 @@ export function gameStore() {
           session_token: this.sessionToken,
           answers: this.answersLog,
           is_game_over: true,
-          player_id: this.playerId,
-          username: this.username,
         });
         if (data && typeof data.final_score === 'number') {
           this.score = data.final_score;
         }
       } catch (e) {
-        // keep client score if save fails
+        // keep client score if verification call fails
       } finally {
         this.loading = false;
+      }
+    },
+
+    // Register this game's result to the ranking. Re-verified server-side; the
+    // same result can't be submitted twice (dedup by result hash).
+    async submitScore() {
+      if (this.submitting || this.submitted) return;
+      this.submitError = '';
+      const name = (this.nickname || '').trim();
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem('nickname', name);
+      }
+      this.submitting = true;
+      try {
+        const data = await this.api('/api/scores/submit', {
+          session_token: this.sessionToken,
+          answers: this.answersLog,
+          is_game_over: this.gameOver,
+          player_id: this.playerId,
+          display_name: name,
+        });
+        if (data && data.saved) {
+          this.submitted = true;
+          this.savedName = data.username || name || this.defaultGuestName;
+        } else if (data && data.error === 'already_submitted') {
+          this.submitted = true;
+          this.savedName = name || this.defaultGuestName;
+          this.submitError = 'この結果は登録済みです';
+        } else {
+          this.submitError = '登録に失敗しました。もう一度お試しください';
+        }
+      } catch (e) {
+        this.submitError = '通信エラーが発生しました';
+      } finally {
+        this.submitting = false;
       }
     },
 
@@ -792,13 +840,11 @@ export function gameStore() {
       }, 1000);
     },
     fireSpecialAttack(dmg) {
-      // Phase 1 (0-1.3s): diagonal-band cut-in only. The oni is NOT hit yet,
-      // so the attack itself stays visible afterwards. Input is locked via the
-      // cutIn flag in `locked`.
+      // Phase 1 (0-1.3s): diagonal-band cut-in with its own sound. The main
+      // 必殺技 sound is played later, synced to the ✕ slash impact (Phase 2).
+      // The oni is NOT hit yet. Input is locked via `cutIn`.
       this.cutIn = true;
-      // Dedicated 必殺技 sound only — layering 'charge' under it made the new
-      // sound inaudible (it sounded unchanged).
-      if (this.audio) this.audio.playSE('special');
+      if (this.audio) this.audio.playSE('special_cutin');
       setTimeout(() => {
         this.cutIn = false;
         // Phase 2 (1.3-2.2s): strike the oni now that the cut-in is done.
@@ -808,10 +854,8 @@ export function gameStore() {
         this.superAttacking = true;
         // Gauge empties as the 必殺技 fires.
         this.specialGaugeDisplay = 0;
-        if (this.audio) {
-          this.audio.playSE('laser');
-          this.audio.playSE('correct');
-        }
+        // ✕ effect (super-beam) appears now: dedicated 必殺技 sound only.
+        if (this.audio) this.audio.playSE('special');
         const id = ++this._floatId;
         this.floatingTexts.push({ id, value: dmg, special: true });
         setTimeout(() => {

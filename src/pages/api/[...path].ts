@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import type { APIContext } from 'astro';
-import { encrypt, decrypt } from '../../utils/crypto';
+import { encrypt, decrypt, sha256Hex } from '../../utils/crypto';
 import { query } from '../../utils/db';
 
 export const prerender = false;
@@ -154,17 +154,41 @@ app.post('/stages/more', async (c) => {
   });
 });
 
-app.post('/stages/clear', async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  const token = decrypt<PlayToken>(body.session_token);
-  if (!token) {
-    return c.json({ error: 'invalid_token', verified: false }, 400);
-  }
+const SPECIAL_MULT = 3;
 
+type VerifiedLog = {
+  num1: number;
+  num2: number;
+  user_answer: number;
+  is_correct: boolean;
+  time_taken: number;
+};
+
+type VerifyResult = {
+  verified: boolean;
+  stage: number;
+  oniMaxHp: number;
+  stageScore: number;
+  defeated: boolean;
+  defeatBonus: number;
+  finalCumulative: number;
+  gameCompleted: boolean;
+  terminal: boolean;
+  reachedStage: number;
+  carryToken: string | null;
+  verifiedLogs: VerifiedLog[];
+};
+
+// Re-run the deterministic scoring against the questions baked into the token.
+// This is the single source of truth used by both /stages/clear (progression)
+// and /scores/submit (ranking save) so a client can never inflate its score.
+function verifyAndScore(
+  token: PlayToken,
+  answers: any[],
+  isGameOver: boolean
+): VerifyResult {
   const stage = token.stage;
   const oniMaxHp = stage * ONI_HP_PER_STAGE;
-  const isGameOver = body.is_game_over === true;
-  const answers: any[] = Array.isArray(body.answers) ? body.answers : [];
 
   // Build a multiset of generated (num1,num2) pairs for verification.
   const pool = new Map<string, number>();
@@ -178,14 +202,7 @@ app.post('/stages/clear', async (c) => {
   // Mirror of the client's 必殺技 gauge. Gain is deterministic so the special
   // multiplier triggers on exactly the same answers as the client.
   let specialGauge = 0;
-  const SPECIAL_MULT = 3;
-  const verifiedLogs: {
-    num1: number;
-    num2: number;
-    user_answer: number;
-    is_correct: boolean;
-    time_taken: number;
-  }[] = [];
+  const verifiedLogs: VerifiedLog[] = [];
 
   for (const ans of answers) {
     const num1 = Number(ans.num1);
@@ -238,57 +255,138 @@ app.post('/stages/clear', async (c) => {
     } as CarryToken);
   }
 
-  let scoreId: number | null = null;
-  if (terminal) {
-    const playerId = String(body.player_id || 'anonymous').slice(0, 255);
-    const username = String(body.username || 'ゲスト').slice(0, 50);
-    const reachedStage = gameCompleted ? MAX_STAGE : stage;
-    try {
-      const result = await query(
-        'INSERT INTO scores (player_id, username, score, stage) VALUES ($1, $2, $3, $4) RETURNING id',
-        [playerId, username, finalCumulative, reachedStage]
-      );
-      scoreId = result.rows[0]?.id ?? null;
+  return {
+    verified,
+    stage,
+    oniMaxHp,
+    stageScore,
+    defeated,
+    defeatBonus,
+    finalCumulative,
+    gameCompleted,
+    terminal,
+    reachedStage: gameCompleted ? MAX_STAGE : stage,
+    carryToken,
+    verifiedLogs,
+  };
+}
 
-      // Async (non-blocking) bulk insert of question logs.
-      if (scoreId && verifiedLogs.length > 0) {
-        const values: any[] = [];
-        const placeholders = verifiedLogs
-          .map((log, i) => {
-            const o = i * 6;
-            values.push(
-              scoreId,
-              log.num1,
-              log.num2,
-              log.user_answer,
-              log.is_correct,
-              log.time_taken
-            );
-            return `($${o + 1}, $${o + 2}, $${o + 3}, $${o + 4}, $${o + 5}, $${o + 6})`;
-          })
-          .join(', ');
-        void query(
-          `INSERT INTO question_logs (score_id, num1, num2, user_answer, is_correct, time_taken) VALUES ${placeholders}`,
-          values
-        ).catch((err) => console.error('question_logs insert failed', err));
-      }
-    } catch (err) {
-      console.error('score insert failed', err);
-    }
+// Trim, strip control characters, and cap the length of a user-supplied
+// display name. Empty result -> caller falls back to a player_id-derived name.
+function sanitizeDisplayName(raw: unknown): string {
+  if (typeof raw !== 'string') return '';
+  // eslint-disable-next-line no-control-regex
+  return raw.replace(/[\x00-\x1f\x7f-\x9f]/g, '').trim().slice(0, 20);
+}
+
+// Default display name when the player registers without a nickname:
+// 「ゲスト-」 + last 4 chars of player_id (never the raw UUID).
+function guestName(playerId: string): string {
+  const tail = playerId.replace(/[^0-9a-zA-Z]/g, '').slice(-4) || '0000';
+  return `ゲスト-${tail}`;
+}
+
+app.post('/stages/clear', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const token = decrypt<PlayToken>(body.session_token);
+  if (!token) {
+    return c.json({ error: 'invalid_token', verified: false }, 400);
   }
 
+  const isGameOver = body.is_game_over === true;
+  const answers: any[] = Array.isArray(body.answers) ? body.answers : [];
+  const r = verifyAndScore(token, answers, isGameOver);
+
+  // No DB writes here anymore: persistence happens only when the player opts
+  // to register their score via /scores/submit.
   return c.json({
-    verified,
-    cleared: defeated,
+    verified: r.verified,
+    cleared: r.defeated,
     is_game_over: isGameOver,
-    game_completed: gameCompleted,
-    stage_score: stageScore,
-    defeat_bonus: defeatBonus,
-    final_score: finalCumulative,
-    oni_max_hp: oniMaxHp,
-    carry_token: carryToken,
-    score_id: scoreId,
+    game_completed: r.gameCompleted,
+    stage_score: r.stageScore,
+    defeat_bonus: r.defeatBonus,
+    final_score: r.finalCumulative,
+    oni_max_hp: r.oniMaxHp,
+    carry_token: r.carryToken,
   });
+});
+
+app.post('/scores/submit', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const token = decrypt<PlayToken>(body.session_token);
+  if (!token) {
+    return c.json({ error: 'invalid_token', saved: false }, 400);
+  }
+
+  const isGameOver = body.is_game_over === true;
+  const answers: any[] = Array.isArray(body.answers) ? body.answers : [];
+  const r = verifyAndScore(token, answers, isGameOver);
+
+  // Re-verify the result; never trust a client-sent raw score.
+  if (!r.verified) {
+    return c.json({ error: 'verification_failed', saved: false }, 400);
+  }
+  // Only a finished game (game over or all-clear) may be registered.
+  if (!r.terminal) {
+    return c.json({ error: 'not_terminal', saved: false }, 400);
+  }
+
+  const playerId = String(body.player_id || 'anonymous').slice(0, 255);
+  const username = sanitizeDisplayName(body.display_name) || guestName(playerId);
+  // Deterministic dedup key over the exact result (token + answers). The token
+  // embeds a random IV, so each distinct game produces a unique hash.
+  const resultHash = sha256Hex(
+    `${body.session_token}|${JSON.stringify(answers)}`
+  );
+
+  try {
+    const result = await query(
+      `INSERT INTO scores (player_id, username, score, stage, result_hash)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (result_hash) DO NOTHING
+       RETURNING id`,
+      [playerId, username, r.finalCumulative, r.reachedStage, resultHash]
+    );
+    const scoreId: number | null = result.rows[0]?.id ?? null;
+    if (scoreId === null) {
+      // Unique constraint hit: this exact result was already registered.
+      return c.json({ error: 'already_submitted', saved: false }, 409);
+    }
+
+    // Async (non-blocking) bulk insert of question logs.
+    if (r.verifiedLogs.length > 0) {
+      const values: any[] = [];
+      const placeholders = r.verifiedLogs
+        .map((log, i) => {
+          const o = i * 6;
+          values.push(
+            scoreId,
+            log.num1,
+            log.num2,
+            log.user_answer,
+            log.is_correct,
+            log.time_taken
+          );
+          return `($${o + 1}, $${o + 2}, $${o + 3}, $${o + 4}, $${o + 5}, $${o + 6})`;
+        })
+        .join(', ');
+      void query(
+        `INSERT INTO question_logs (score_id, num1, num2, user_answer, is_correct, time_taken) VALUES ${placeholders}`,
+        values
+      ).catch((err) => console.error('question_logs insert failed', err));
+    }
+
+    return c.json({
+      saved: true,
+      username,
+      score: r.finalCumulative,
+      stage: r.reachedStage,
+    });
+  } catch (err) {
+    console.error('score submit failed', err);
+    return c.json({ error: 'save_failed', saved: false }, 500);
+  }
 });
 
 app.get('/scores', async (c) => {

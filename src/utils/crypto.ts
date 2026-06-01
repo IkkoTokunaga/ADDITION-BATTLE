@@ -26,6 +26,13 @@ export function encrypt(payload: unknown): string {
   return `${iv.toString('hex')}:${encrypted.toString('hex')}:${authTag.toString('hex')}`;
 }
 
+// Deterministic SHA-256 hex digest, used to derive a stable dedup key from a
+// game result (session_token + answers) so the same result can't be submitted
+// to the ranking twice.
+export function sha256Hex(input: string): string {
+  return crypto.createHash('sha256').update(input).digest('hex');
+}
+
 export function decrypt<T = any>(token: string): T | null {
   try {
     const [ivHex, encHex, tagHex] = token.split(':');

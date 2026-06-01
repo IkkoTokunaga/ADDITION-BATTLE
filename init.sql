@@ -5,8 +5,20 @@ CREATE TABLE IF NOT EXISTS scores (
     username VARCHAR(50) NOT NULL,
     score INTEGER NOT NULL,
     stage INTEGER NOT NULL,
+    result_hash VARCHAR(64) UNIQUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Migration for existing deployments: add the dedup key column if missing.
+ALTER TABLE scores ADD COLUMN IF NOT EXISTS result_hash VARCHAR(64);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'scores_result_hash_key'
+    ) THEN
+        ALTER TABLE scores ADD CONSTRAINT scores_result_hash_key UNIQUE (result_hash);
+    END IF;
+END $$;
 
 -- Create question_logs table
 CREATE TABLE IF NOT EXISTS question_logs (

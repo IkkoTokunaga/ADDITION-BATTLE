@@ -12,6 +12,7 @@ const SE_FILES = {
   laser: 'ビーム砲',
   charge: '光玉溜め',
   special: '必殺技',
+  special_cutin: '必殺技カットイン',
   growl1: '鬼鳴き声1',
   growl2: '鬼鳴き声2',
   growl3: '鬼鳴き声3',
