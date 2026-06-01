@@ -175,6 +175,10 @@ app.post('/stages/clear', async (c) => {
 
   let verified = true;
   let stageScore = 0;
+  // Mirror of the client's 必殺技 gauge. Gain is deterministic so the special
+  // multiplier triggers on exactly the same answers as the client.
+  let specialGauge = 0;
+  const SPECIAL_MULT = 3;
   const verifiedLogs: {
     num1: number;
     num2: number;
@@ -203,7 +207,13 @@ app.post('/stages/clear', async (c) => {
     if (isCorrect) {
       const baseScore = stage * 100;
       const timeBonus = t < 10 ? ((10 - t) * stage) / 10 : 0;
-      stageScore += Math.round(baseScore + timeBonus);
+      let gained = Math.round(baseScore + timeBonus);
+      specialGauge += 10 + ((num1 + num2) % 16);
+      if (specialGauge >= 100) {
+        gained *= SPECIAL_MULT;
+        specialGauge = 0;
+      }
+      stageScore += gained;
     }
     verifiedLogs.push({
       num1,

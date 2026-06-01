@@ -1,6 +1,9 @@
 import { audioManager } from './audio.js';
 
 const MAX_INPUT_LEN = 7;
+// Damage multiplier when the 必殺技 gauge fires. Kept in sync with the server
+// (src/pages/api/[...path].ts).
+const SPECIAL_MULT = 3;
 
 function navigate(path) {
   if (typeof window === 'undefined') return;
@@ -46,10 +49,17 @@ export function gameStore() {
     lastStageScore: 0,
     lastDefeatBonus: 0,
 
+    // special attack gauge (0-100). Fills on each correct answer; at 100 the
+    // next correct answer auto-fires the 必殺技. Gain is DETERMINISTIC so the
+    // server (see /api/stages/clear) can replicate it and stay in sync.
+    specialGauge: 0,
+
     // effects
     shaking: false,
     takingDamage: false,
     explode: false,
+    cutIn: false,
+    superAttacking: false,
     floatingTexts: [],
     brokenHeart: -1,
     _floatId: 0,
@@ -77,15 +87,14 @@ export function gameStore() {
       if (!this.oniMaxHp) return 0;
       return Math.max(0, (this.oniHp / this.oniMaxHp) * 100);
     },
-    get teacherHpPercent() {
-      return Math.max(0, (this.lives / 3) * 100);
-    },
     get locked() {
       return (
         this.loading ||
         this.stageCleared ||
         this.gameOver ||
         this.gameCompleted ||
+        this.cutIn ||
+        this.superAttacking ||
         !this.currentQuestion
       );
     },
@@ -120,6 +129,9 @@ export function gameStore() {
       this.explode = false;
       this.shaking = false;
       this.takingDamage = false;
+      this.specialGauge = 0;
+      this.cutIn = false;
+      this.superAttacking = false;
       if (this.audio) this.audio.playBGM('home');
     },
 
@@ -150,6 +162,7 @@ export function gameStore() {
         this.oniMaxHp = data.oni_max_hp;
         this.oniHp = data.oni_max_hp;
         this.totalDamage = 0;
+        this.specialGauge = 0;
         this.sessionToken = data.session_token;
         this.questionQueue = data.questions || [];
         this.questionIndex = 0;
@@ -216,7 +229,23 @@ export function gameStore() {
       if (correct) {
         const base = this.stage * 100;
         const timeBonus = t < 10 ? ((10 - t) * this.stage) / 10 : 0;
-        const dmg = Math.round(base + timeBonus);
+        let dmg = Math.round(base + timeBonus);
+
+        // Deterministic gauge gain (10-25%). Must match the server.
+        this.specialGauge += 10 + ((q.num1 + q.num2) % 16);
+        const isSpecial = this.specialGauge >= 100;
+        if (isSpecial) {
+          dmg *= SPECIAL_MULT;
+          this.specialGauge = 0;
+        }
+
+        if (isSpecial) {
+          // Special flow: cut-in plays first, THEN the oni is struck, THEN we
+          // advance. fireSpecialAttack drives the whole sequence.
+          this.fireSpecialAttack(dmg);
+          return;
+        }
+
         this.score += dmg;
         this.totalDamage += dmg;
         this.oniHp = Math.max(0, this.oniMaxHp - this.totalDamage);
@@ -231,6 +260,11 @@ export function gameStore() {
         }
       }
 
+      this.resolveAfterAttack();
+    },
+
+    // Advance after a hit resolves: end the game, clear the stage, or move on.
+    resolveAfterAttack() {
       if (this.lives <= 0) {
         this.endGame();
         return;
@@ -239,10 +273,8 @@ export function gameStore() {
         this.clearStage();
         return;
       }
-
       this.questionIndex++;
       this.nextQuestion();
-
       if (this.questionIndex >= this.questionQueue.length - 2) {
         this.prefetchQuestions();
       }
@@ -371,6 +403,40 @@ export function gameStore() {
         this.floatingTexts = this.floatingTexts.filter((f) => f.id !== id);
       }, 1000);
       if (this.audio) this.audio.playRandomGrowl();
+    },
+    fireSpecialAttack(dmg) {
+      // Phase 1 (0-1.3s): diagonal-band cut-in only. The oni is NOT hit yet,
+      // so the attack itself stays visible afterwards. Input is locked via the
+      // cutIn flag in `locked`.
+      this.cutIn = true;
+      if (this.audio) this.audio.playSE('charge');
+      setTimeout(() => {
+        this.cutIn = false;
+        // Phase 2 (1.3-2.2s): strike the oni now that the cut-in is done.
+        this.score += dmg;
+        this.totalDamage += dmg;
+        this.oniHp = Math.max(0, this.oniMaxHp - this.totalDamage);
+        this.superAttacking = true;
+        this.shaking = true;
+        if (this.audio) {
+          this.audio.playSE('laser');
+          this.audio.playSE('correct');
+          this.audio.playRandomGrowl();
+        }
+        const id = ++this._floatId;
+        this.floatingTexts.push({ id, value: dmg, special: true });
+        setTimeout(() => {
+          this.floatingTexts = this.floatingTexts.filter((f) => f.id !== id);
+        }, 1200);
+        setTimeout(() => {
+          this.shaking = false;
+        }, 500);
+        // Phase 3: resolve (next question, or stage clear / explosion).
+        setTimeout(() => {
+          this.superAttacking = false;
+          this.resolveAfterAttack();
+        }, 900);
+      }, 1300);
     },
     takeDamageEffect() {
       this.takingDamage = true;
