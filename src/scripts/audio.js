@@ -11,6 +11,7 @@ const SE_FILES = {
   oni_attack: '鬼攻撃',
   laser: 'ビーム砲',
   charge: '光玉溜め',
+  special: '必殺技',
   growl1: '鬼鳴き声1',
   growl2: '鬼鳴き声2',
   growl3: '鬼鳴き声3',

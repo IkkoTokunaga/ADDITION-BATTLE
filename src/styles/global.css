@@ -241,14 +241,6 @@ body {
   animation: pulse 1.6s ease-in-out infinite;
 }
 
-@keyframes floatIdle {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-.float-idle {
-  animation: floatIdle 3.5s ease-in-out infinite;
-}
-
 @keyframes modalPop {
   0% { transform: scale(0.8); opacity: 0; }
   100% { transform: scale(1); opacity: 1; }
@@ -497,4 +489,5 @@ body {
   82% { transform: translateY(-50%) translateX(0) scale(1); opacity: 1; }
   100% { transform: translateY(-50%) translateX(12%) scale(1.05); opacity: 0; }
 }
+
 

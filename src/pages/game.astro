@@ -37,6 +37,7 @@ import Layout from '../layouts/Layout.astro';
         <img
           src="/images/女教師.png"
           alt="女教師"
+          data-mascot
           class="h-28 sm:h-36 w-auto object-contain drop-shadow-[0_0_18px_rgba(0,245,212,0.45)]"
           :class="{ 'is-shaking': g.takingDamage }"
         />
@@ -52,12 +53,12 @@ import Layout from '../layouts/Layout.astro';
           <div class="flex items-center justify-between text-[9px] font-bold leading-none">
             <span
               class="tracking-wider transition-colors"
-              :class="g.specialGauge >= 75 ? 'text-[#fee440] glow-text-cyan' : 'text-[#b5a9df]'"
+              :class="g.specialGaugeDisplay >= 75 ? 'text-[#fee440] glow-text-cyan' : 'text-[#b5a9df]'"
             >必殺技</span>
-            <span class="text-[#b5a9df]/70" x-text="Math.min(100, Math.floor(g.specialGauge)) + '%'"></span>
+            <span class="text-[#b5a9df]/70" x-text="Math.min(100, Math.floor(g.specialGaugeDisplay)) + '%'"></span>
           </div>
-          <div class="hp-track h-2 w-full" :class="g.specialGauge >= 75 ? 'special-track-hot' : ''">
-            <div class="hp-fill-special" :style="`width:${Math.min(100, g.specialGauge)}%`"></div>
+          <div class="hp-track h-2 w-full" data-special-gauge :class="g.specialGaugeDisplay >= 75 ? 'special-track-hot' : ''">
+            <div class="hp-fill-special" :style="`width:${Math.min(100, g.specialGaugeDisplay)}%`"></div>
           </div>
         </div>
       </div>
@@ -82,8 +83,9 @@ import Layout from '../layouts/Layout.astro';
           <img
             :src="oniImages[Math.min(Math.max(g.stage,1),12)-1]"
             alt="鬼"
+            data-oni
             class="h-48 sm:h-56 w-auto object-contain drop-shadow-[0_0_24px_rgba(241,91,181,0.5)]"
-            :class="{ 'is-shaking': g.shaking, 'is-exploding': g.explode, 'float-idle': !g.shaking && !g.explode }"
+            :class="{ 'is-shaking': g.shaking, 'is-exploding': g.explode }"
             :style="(g.oniDefeated || !g.oniImgReady) ? 'visibility:hidden' : ''"
             @load="g.oniImgReady = true"
             @error="g.oniImgReady = true"
