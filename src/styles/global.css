@@ -281,32 +281,55 @@ body {
 }
 
 /* Horizontal energy beam across the oni */
+/* 必殺技: two diagonal slashes that grow out from the center to form an ✕. */
 .super-beam {
   position: absolute;
-  left: 0;
+  left: 50%;
   top: 50%;
-  width: 100%;
-  height: 70px;
-  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  transform: translate(-50%, -50%);
   z-index: 20;
+  pointer-events: none;
+}
+.super-beam::before,
+.super-beam::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 340px;
+  height: 26px;
+  margin: -13px 0 0 -170px;
+  border-radius: 999px;
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(0, 245, 212, 0.85) 25%,
+    rgba(0, 245, 212, 0.9) 18%,
     #fff 50%,
-    rgba(241, 91, 181, 0.85) 75%,
+    rgba(241, 91, 181, 0.9) 82%,
     transparent
   );
-  filter: blur(1px) brightness(1.4);
-  box-shadow: 0 0 50px rgba(0, 245, 212, 0.9);
-  pointer-events: none;
-  animation: superBeam 1.1s ease-out forwards;
+  filter: blur(1px) brightness(1.5);
+  box-shadow: 0 0 45px rgba(0, 245, 212, 0.9);
 }
-@keyframes superBeam {
-  0% { opacity: 0; transform: translateY(-50%) scaleX(0.1); height: 30px; }
-  18% { opacity: 1; transform: translateY(-50%) scaleX(1); height: 90px; }
-  55% { opacity: 1; height: 55px; }
-  100% { opacity: 0; height: 24px; }
+.super-beam::before {
+  animation: superSlashA 0.85s ease-out forwards;
+}
+.super-beam::after {
+  animation: superSlashB 0.85s ease-out 0.14s forwards;
+}
+@keyframes superSlashA {
+  0% { opacity: 0; transform: rotate(45deg) scaleX(0); }
+  16% { opacity: 1; transform: rotate(45deg) scaleX(1.08); }
+  45% { opacity: 1; transform: rotate(45deg) scaleX(1); }
+  100% { opacity: 0; transform: rotate(45deg) scaleX(1); }
+}
+@keyframes superSlashB {
+  0% { opacity: 0; transform: rotate(-45deg) scaleX(0); }
+  16% { opacity: 1; transform: rotate(-45deg) scaleX(1.08); }
+  45% { opacity: 1; transform: rotate(-45deg) scaleX(1); }
+  100% { opacity: 0; transform: rotate(-45deg) scaleX(1); }
 }
 
 /* ===== Slash cut-in ===== */
@@ -472,3 +495,4 @@ body {
   82% { transform: translateY(-50%) translateX(0) scale(1); opacity: 1; }
   100% { transform: translateY(-50%) translateX(12%) scale(1.05); opacity: 0; }
 }
+

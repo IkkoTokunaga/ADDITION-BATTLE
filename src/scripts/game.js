@@ -443,7 +443,7 @@ export function gameStore() {
         setTimeout(() => {
           this.superAttacking = false;
           this.resolveAfterAttack();
-        }, 900);
+        }, 1050);
       }, 1300);
     },
     takeDamageEffect() {

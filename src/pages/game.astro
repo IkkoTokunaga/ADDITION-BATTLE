@@ -239,9 +239,15 @@ import Layout from '../layouts/Layout.astro';
       const g = Alpine.store('game') as any;
       if (!g || g.locked) return;
       const k = e.key;
-      if (k >= '0' && k <= '9') { g.pressKey(k); }
-      else if (k === 'Backspace') { e.preventDefault(); g.backspace(); }
-      else if (k === 'Enter') { e.preventDefault(); g.submitAnswer(); }
+      const code = e.code;
+      // Numpad digits work even when NumLock is off (e.key would be a nav key,
+      // so fall back to e.code which is always Numpad0-9).
+      let digit: string | null = null;
+      if (k >= '0' && k <= '9') digit = k;
+      else if (/^Numpad[0-9]$/.test(code)) digit = code.slice(6);
+      if (digit !== null) { e.preventDefault(); g.pressKey(digit); return; }
+      if (k === 'Backspace') { e.preventDefault(); g.backspace(); }
+      else if (k === 'Enter' || code === 'NumpadEnter') { e.preventDefault(); g.submitAnswer(); }
     });
   }
 </script>
