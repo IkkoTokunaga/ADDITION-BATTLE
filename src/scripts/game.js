@@ -53,8 +53,12 @@ export function gameStore() {
     // next correct answer auto-fires the 必殺技. Gain is DETERMINISTIC so the
     // server (see /api/stages/clear) can replicate it and stay in sync.
     specialGauge: 0,
+    // Visual mirror of specialGauge shown by the gauge bar. Lags behind the
+    // logic value so it only advances once the light-orb effect reaches it.
+    specialGaugeDisplay: 0,
 
     // effects
+    _shakeTimer: null,
     shaking: false,
     takingDamage: false,
     explode: false,
@@ -134,6 +138,7 @@ export function gameStore() {
       this.shaking = false;
       this.takingDamage = false;
       this.specialGauge = 0;
+      this.specialGaugeDisplay = 0;
       this.cutIn = false;
       this.superAttacking = false;
       if (this.audio) this.audio.playBGM('home');
@@ -172,6 +177,7 @@ export function gameStore() {
         this.oniDefeated = false;
         this.totalDamage = 0;
         this.specialGauge = 0;
+        this.specialGaugeDisplay = 0;
         this.sessionToken = data.session_token;
         this.questionQueue = data.questions || [];
         this.questionIndex = 0;
@@ -253,6 +259,7 @@ export function gameStore() {
         if (isSpecial) {
           // Special flow: cut-in plays first, THEN the oni is struck, THEN we
           // advance. fireSpecialAttack drives the whole sequence.
+          this.specialGaugeDisplay = 100;
           this.fireSpecialAttack(dmg);
           return;
         }
@@ -262,6 +269,9 @@ export function gameStore() {
         this.oniHp = Math.max(0, this.oniMaxHp - this.totalDamage);
         if (this.audio) this.audio.playSE('correct');
         this.attackEffect(dmg);
+        // Light orbs scatter, gather to the center, then fly into the gauge,
+        // which only then advances (display catches up to specialGauge).
+        this.spawnGaugeOrbs(this.specialGauge);
       } else {
         this.lives -= 1;
         this.takeDamageEffect();
@@ -410,11 +420,106 @@ export function gameStore() {
     },
 
     // ---- effects ----
+    // Spawn small light orbs scattered around the screen, gather them to the
+    // center into one larger orb, then send it flying into the 必殺技 gauge.
+    // The gauge's displayed value only advances to `targetGauge` once the orb
+    // arrives, so the fill visually feels "fed" by the orb.
+    spawnGaugeOrbs(targetGauge) {
+      if (typeof document === 'undefined' || typeof window === 'undefined') {
+        this.specialGaugeDisplay = targetGauge;
+        return;
+      }
+      const layer = document.getElementById('orb-fx-layer');
+      const gaugeEl = document.querySelector('[data-special-gauge]');
+      if (!layer || !gaugeEl) {
+        this.specialGaugeDisplay = targetGauge;
+        return;
+      }
+
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const cx = vw / 2;
+      const cy = vh / 2;
+      const gr = gaugeEl.getBoundingClientRect();
+      const tx = gr.left + gr.width / 2;
+      const ty = gr.top + gr.height / 2;
+
+      const N = 8;
+      const gatherDur = 620;
+      const margin = 40;
+      const self = this;
+      let remaining = N;
+
+      const arrive = () => {
+        // Only fill if we're not mid-必殺技 (a reset may have happened).
+        if (!self.cutIn && !self.superAttacking) {
+          self.specialGaugeDisplay = Math.max(self.specialGaugeDisplay, targetGauge);
+        }
+        if (self.audio) self.audio.playSE('keypad');
+        gaugeEl.classList.add('gauge-pulse');
+        setTimeout(() => gaugeEl.classList.remove('gauge-pulse'), 380);
+      };
+
+      const launchMerged = () => {
+        const merged = document.createElement('div');
+        merged.className = 'gauge-orb gauge-orb--merged';
+        merged.style.transform = `translate(${cx}px, ${cy}px) translate(-50%, -50%) scale(0.4)`;
+        layer.appendChild(merged);
+        const pop = merged.animate(
+          [
+            { transform: `translate(${cx}px, ${cy}px) translate(-50%,-50%) scale(0.4)`, opacity: 0.6 },
+            { transform: `translate(${cx}px, ${cy}px) translate(-50%,-50%) scale(1.3)`, opacity: 1 },
+          ],
+          { duration: 190, easing: 'ease-out', fill: 'forwards' }
+        );
+        pop.onfinish = () => {
+          const fly = merged.animate(
+            [
+              { transform: `translate(${cx}px, ${cy}px) translate(-50%,-50%) scale(1.3)`, opacity: 1 },
+              { transform: `translate(${tx}px, ${ty}px) translate(-50%,-50%) scale(0.6)`, opacity: 1, offset: 0.82 },
+              { transform: `translate(${tx}px, ${ty}px) translate(-50%,-50%) scale(0.15)`, opacity: 0 },
+            ],
+            { duration: 540, easing: 'cubic-bezier(0.45,0,0.2,1)', fill: 'forwards' }
+          );
+          fly.onfinish = () => {
+            merged.remove();
+            arrive();
+          };
+        };
+      };
+
+      for (let i = 0; i < N; i++) {
+        const orb = document.createElement('div');
+        orb.className = 'gauge-orb';
+        const ang = Math.random() * Math.PI * 2;
+        const rad = 80 + Math.random() * Math.min(vw, vh) * 0.3;
+        // Keep every orb fully on-screen so it can't push the page wide.
+        const sx = Math.max(margin, Math.min(vw - margin, cx + Math.cos(ang) * rad));
+        const sy = Math.max(margin, Math.min(vh - margin, cy + Math.sin(ang) * rad));
+        layer.appendChild(orb);
+        const anim = orb.animate(
+          [
+            { transform: `translate(${sx}px, ${sy}px) translate(-50%,-50%) scale(0.5)`, opacity: 0 },
+            { transform: `translate(${sx}px, ${sy}px) translate(-50%,-50%) scale(1)`, opacity: 1, offset: 0.2 },
+            { transform: `translate(${cx}px, ${cy}px) translate(-50%,-50%) scale(0.9)`, opacity: 1 },
+          ],
+          { duration: gatherDur, delay: i * 45, easing: 'cubic-bezier(0.5,0,0.3,1)', fill: 'forwards' }
+        );
+        anim.onfinish = () => {
+          orb.remove();
+          remaining -= 1;
+          if (remaining === 0) launchMerged();
+        };
+      }
+    },
+
     attackEffect(dmg) {
-      this.shaking = true;
+      clearTimeout(this._shakeTimer);
+      this.shaking = false;
       setTimeout(() => {
-        this.shaking = false;
-      }, 400);
+        this.shaking = true;
+        this._shakeTimer = setTimeout(() => { this.shaking = false; }, 400);
+      }, 0);
       const id = ++this._floatId;
       this.floatingTexts.push({ id, value: dmg });
       setTimeout(() => {
@@ -434,6 +539,8 @@ export function gameStore() {
         this.totalDamage += dmg;
         this.oniHp = Math.max(0, this.oniMaxHp - this.totalDamage);
         this.superAttacking = true;
+        // Gauge empties as the 必殺技 fires.
+        this.specialGaugeDisplay = 0;
         if (this.audio) {
           this.audio.playSE('laser');
           this.audio.playSE('correct');
