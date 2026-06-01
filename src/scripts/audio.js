@@ -49,6 +49,23 @@ class AudioManager {
     this.muted = false;
     this.preloaded = false;
     this._unlocked = false;
+    this._bgmPausedByVisibility = false;
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+          const el = this.bgmEl;
+          if (el && !el.paused) {
+            el.pause();
+            this._bgmPausedByVisibility = true;
+          }
+        } else {
+          if (this._bgmPausedByVisibility && this._unlocked) {
+            this.bgmEl?.play().catch(() => {});
+          }
+          this._bgmPausedByVisibility = false;
+        }
+      });
+    }
   }
 
   get bgmEl() {
