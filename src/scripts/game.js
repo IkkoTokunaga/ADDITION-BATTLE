@@ -58,6 +58,7 @@ export function gameStore() {
     shaking: false,
     takingDamage: false,
     explode: false,
+    oniDefeated: false,
     cutIn: false,
     superAttacking: false,
     floatingTexts: [],
@@ -127,6 +128,7 @@ export function gameStore() {
       this.sessionToken = null;
       this.floatingTexts = [];
       this.explode = false;
+      this.oniDefeated = false;
       this.shaking = false;
       this.takingDamage = false;
       this.specialGauge = 0;
@@ -161,6 +163,7 @@ export function gameStore() {
         this.stage = data.stage;
         this.oniMaxHp = data.oni_max_hp;
         this.oniHp = data.oni_max_hp;
+        this.oniDefeated = false;
         this.totalDamage = 0;
         this.specialGauge = 0;
         this.sessionToken = data.session_token;
@@ -344,14 +347,21 @@ export function gameStore() {
 
       const completed = data && data.game_completed;
       setTimeout(() => {
+        // Explosion finished (oni faded to opacity 0). Hide the oni entirely so
+        // it does NOT re-appear when the .is-exploding class is removed.
+        this.oniDefeated = true;
         this.explode = false;
-        this.loading = false;
         if (completed) {
+          this.loading = false;
           this.gameCompleted = true;
         } else {
-          this.stageCleared = true;
+          // No per-stage clear popup: leave the field empty for ~1s so the
+          // player can see the oni is gone, then advance to the next oni.
+          // loadStage clears `oniDefeated` once the next oni is ready.
+          setTimeout(() => {
+            this.proceedToNextStage();
+          }, 1000);
         }
-        if (this.audio) this.audio.playBGM('clear');
       }, 1100);
     },
 
@@ -402,7 +412,6 @@ export function gameStore() {
       setTimeout(() => {
         this.floatingTexts = this.floatingTexts.filter((f) => f.id !== id);
       }, 1000);
-      if (this.audio) this.audio.playRandomGrowl();
     },
     fireSpecialAttack(dmg) {
       // Phase 1 (0-1.3s): diagonal-band cut-in only. The oni is NOT hit yet,
@@ -421,7 +430,6 @@ export function gameStore() {
         if (this.audio) {
           this.audio.playSE('laser');
           this.audio.playSE('correct');
-          this.audio.playRandomGrowl();
         }
         const id = ++this._floatId;
         this.floatingTexts.push({ id, value: dmg, special: true });
