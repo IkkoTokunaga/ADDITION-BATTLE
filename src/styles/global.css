@@ -299,9 +299,10 @@ body {
   left: 50%;
   top: 50%;
   width: 340px;
-  height: 26px;
-  margin: -13px 0 0 -170px;
-  border-radius: 999px;
+  height: 30px;
+  margin: -15px 0 0 -170px;
+  /* Tapered blade: sharp points at both tips, thickest at the center. */
+  clip-path: polygon(0% 50%, 50% 0%, 100% 50%, 50% 100%);
   background: linear-gradient(
     90deg,
     transparent,
