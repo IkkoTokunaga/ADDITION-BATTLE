@@ -140,6 +140,7 @@ class AudioManager {
       el.src = url;
     }
     el.loop = true;
+    el.muted = this.muted;
     el.volume = this.muted ? 0 : 0.45;
     if (this._unlocked) {
       el.play().catch(() => {});
@@ -162,7 +163,10 @@ class AudioManager {
     this.muted = muted;
     if (this.seGain) this.seGain.gain.value = muted ? 0 : 0.9;
     const el = this.bgmEl;
-    if (el) el.volume = muted ? 0 : 0.45;
+    if (el) {
+      el.muted = muted;
+      el.volume = muted ? 0 : 0.45;
+    }
   }
 
   toggleMute() {
