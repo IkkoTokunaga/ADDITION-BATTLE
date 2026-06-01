@@ -184,7 +184,9 @@ export function gameStore() {
         if (this.audio) {
           this.audio.playBGM(this.audio.bgmForStage(this.stage));
           this.audio.playSE('stage_intro');
-          this.audio.playRandomGrowl();
+          setTimeout(() => {
+            if (this.audio) this.audio.playRandomGrowl();
+          }, 700);
         }
       } finally {
         this.loading = false;
