@@ -434,7 +434,6 @@ export function gameStore() {
         this.totalDamage += dmg;
         this.oniHp = Math.max(0, this.oniMaxHp - this.totalDamage);
         this.superAttacking = true;
-        this.shaking = true;
         if (this.audio) {
           this.audio.playSE('laser');
           this.audio.playSE('correct');
@@ -444,9 +443,6 @@ export function gameStore() {
         setTimeout(() => {
           this.floatingTexts = this.floatingTexts.filter((f) => f.id !== id);
         }, 1200);
-        setTimeout(() => {
-          this.shaking = false;
-        }, 500);
         // Phase 3: resolve (next question, or stage clear / explosion).
         setTimeout(() => {
           this.superAttacking = false;
