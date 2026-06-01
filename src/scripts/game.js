@@ -59,6 +59,7 @@ export function gameStore() {
     takingDamage: false,
     explode: false,
     oniDefeated: false,
+    oniImgReady: false,
     cutIn: false,
     superAttacking: false,
     floatingTexts: [],
@@ -129,6 +130,7 @@ export function gameStore() {
       this.floatingTexts = [];
       this.explode = false;
       this.oniDefeated = false;
+      this.oniImgReady = false;
       this.shaking = false;
       this.takingDamage = false;
       this.specialGauge = 0;
@@ -160,6 +162,10 @@ export function gameStore() {
           stage,
           carry_token: carryToken,
         });
+        // Keep the oni hidden until its NEW image actually loads (the <img>
+        // @load handler flips oniImgReady), so the previous (defeated) oni's
+        // stale frame never flashes during the swap.
+        this.oniImgReady = false;
         this.stage = data.stage;
         this.oniMaxHp = data.oni_max_hp;
         this.oniHp = data.oni_max_hp;

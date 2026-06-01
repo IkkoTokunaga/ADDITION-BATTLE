@@ -84,7 +84,9 @@ import Layout from '../layouts/Layout.astro';
             alt="鬼"
             class="h-48 sm:h-56 w-auto object-contain drop-shadow-[0_0_24px_rgba(241,91,181,0.5)]"
             :class="{ 'is-shaking': g.shaking, 'is-exploding': g.explode, 'float-idle': !g.shaking && !g.explode }"
-            :style="g.oniDefeated ? 'visibility:hidden' : ''"
+            :style="(g.oniDefeated || !g.oniImgReady) ? 'visibility:hidden' : ''"
+            @load="g.oniImgReady = true"
+            @error="g.oniImgReady = true"
           />
           <template x-if="g.explode">
             <div class="shockwave"></div>
