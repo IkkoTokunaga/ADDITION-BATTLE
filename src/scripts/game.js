@@ -796,10 +796,9 @@ export function gameStore() {
       // so the attack itself stays visible afterwards. Input is locked via the
       // cutIn flag in `locked`.
       this.cutIn = true;
-      if (this.audio) {
-        this.audio.playSE('special');
-        this.audio.playSE('charge');
-      }
+      // Dedicated 必殺技 sound only — layering 'charge' under it made the new
+      // sound inaudible (it sounded unchanged).
+      if (this.audio) this.audio.playSE('special');
       setTimeout(() => {
         this.cutIn = false;
         // Phase 2 (1.3-2.2s): strike the oni now that the cut-in is done.
