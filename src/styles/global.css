@@ -285,17 +285,6 @@ body {
 /* ---------- 必殺技 (special attack) ---------- */
 
 /* Big flashy damage number */
-.floating-damage.is-super {
-  font-size: 3.2rem;
-  z-index: 30;
-  color: #fff;
-  background: linear-gradient(90deg, var(--yellow), var(--pink), var(--cyan));
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-shadow: none;
-  filter: drop-shadow(0 0 18px rgba(254, 228, 64, 0.95)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
-}
 
 /* Horizontal energy beam across the oni */
 /* 必殺技: two diagonal slashes that grow out from the center to form an ✕. */

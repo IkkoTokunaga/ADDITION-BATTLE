@@ -1117,18 +1117,11 @@ export function gameStore() {
       if (this.audio) this.audio.playSE('special_cutin');
       setTimeout(() => {
         this.cutIn = false;
-        // Phase 2 (1.3-2.2s): strike the oni now that the cut-in is done.
-        this.score += dmg;
-        this.totalDamage += dmg;
-        this.oniHp = Math.max(0, this.oniMaxHp - this.totalDamage);
         this.superAttacking = true;
-        // Gauge empties as the 必殺技 fires.
         this.specialGaugeDisplay = 0;
         if (this.audio) this.audio.playSE('special');
-        const isKill = this.oniHp <= 0;
-        // Phase 3: resolve after all chalk lands.
-        // On a kill shot: last chalk hits → smoke cloud → defeat animation.
-        // Otherwise: last chalk hits → next question immediately.
+        // Pre-check kill before damage is applied (damage lands when dust fades).
+        const isKill = this.totalDamage + dmg >= this.oniMaxHp;
         let resolved = false;
         const resolve = () => {
           if (resolved) return;
@@ -1137,17 +1130,21 @@ export function gameStore() {
           this.resolveAfterAttack();
         };
         this.fireChalkBarrage(() => {
+          // Dust is fading: apply damage, update HP bar, show damage number.
+          this.score += dmg;
+          this.totalDamage += dmg;
+          this.oniHp = Math.max(0, this.oniMaxHp - this.totalDamage);
+          const id = ++this._floatId;
+          this.floatingTexts.push({ id, value: dmg, special: false });
+          setTimeout(() => {
+            this.floatingTexts = this.floatingTexts.filter((f) => f.id !== id);
+          }, 1200);
           if (isKill) {
             this.chalkSmokeOnOni(resolve);
           } else {
             resolve();
           }
         });
-        const id = ++this._floatId;
-        this.floatingTexts.push({ id, value: dmg, special: true });
-        setTimeout(() => {
-          this.floatingTexts = this.floatingTexts.filter((f) => f.id !== id);
-        }, 1200);
         // Safety net: resolve after 5s regardless, to prevent a stuck state.
         setTimeout(resolve, 5000);
       }, 1300);

@@ -121,8 +121,7 @@ import Layout from '../layouts/Layout.astro';
           <template x-for="f in g.floatingTexts" :key="f.id">
             <div
               class="floating-damage"
-              :class="{ 'is-super': f.special }"
-              x-text="(f.special ? '必殺! -' : '-') + f.value.toLocaleString()"
+              x-text="'-' + f.value.toLocaleString()"
             ></div>
           </template>
         </div>
