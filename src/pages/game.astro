@@ -53,12 +53,29 @@ import Layout from '../layouts/Layout.astro';
           <div class="flex items-center justify-between text-[9px] font-bold leading-none">
             <span
               class="tracking-wider transition-colors"
-              :class="g.specialGaugeDisplay >= 75 ? 'text-[#fee440] glow-text-cyan' : 'text-[#b5a9df]'"
+              :class="g.gaugeFull ? 'gauge-label-full' : (g.specialGaugeDisplay >= 75 ? 'text-[#fee440] glow-text-cyan' : 'text-[#b5a9df]')"
             >必殺技</span>
             <span class="text-[#b5a9df]/70" x-text="Math.min(100, Math.floor(g.specialGaugeDisplay)) + '%'"></span>
           </div>
-          <div class="hp-track h-2 w-full" data-special-gauge :class="g.specialGaugeDisplay >= 75 ? 'special-track-hot' : ''">
-            <div class="hp-fill-special" :style="`width:${Math.min(100, g.specialGaugeDisplay)}%`"></div>
+          <div class="relative">
+            <div class="hp-track h-2 w-full" data-special-gauge
+              :class="[!g.gaugeFull && g.specialGaugeDisplay >= 75 ? 'special-track-hot' : '', g.gaugeFull ? 'special-track-full' : '']">
+              <div class="hp-fill-special"
+                :class="g.gaugeFull ? 'gauge-fill-rainbow' : ''"
+                :style="`width:${Math.min(100, g.specialGaugeDisplay)}%`"></div>
+            </div>
+            <template x-if="g.gaugeFull">
+              <div class="gauge-sparks-wrap" aria-hidden="true">
+                <span class="gspark gspark--c1" style="left:5%;top:-10px"></span>
+                <span class="gspark gspark--c2" style="left:25%;top:-14px"></span>
+                <span class="gspark gspark--c3" style="left:50%;top:-12px"></span>
+                <span class="gspark gspark--c4" style="left:75%;top:-14px"></span>
+                <span class="gspark gspark--c5" style="right:5%;top:-10px"></span>
+                <span class="gspark gspark--c6" style="left:15%;top:18px"></span>
+                <span class="gspark gspark--c7" style="left:55%;top:20px"></span>
+                <span class="gspark gspark--c8" style="right:12%;top:16px"></span>
+              </div>
+            </template>
           </div>
         </div>
       </div>

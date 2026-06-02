@@ -64,6 +64,9 @@ export function gameStore() {
     // Visual mirror of specialGauge shown by the gauge bar. Lags behind the
     // logic value so it only advances once the light-orb effect reaches it.
     specialGaugeDisplay: 0,
+    // True for ~750ms after the gauge reaches 100%: shows rainbow/sparkle and
+    // locks input before the 必殺技 cut-in fires.
+    gaugeFull: false,
 
     // effects
     _shakeTimer: null,
@@ -122,6 +125,7 @@ export function gameStore() {
         this.cutIn ||
         this.superAttacking ||
         this.attacking ||
+        this.gaugeFull ||
         !this.currentQuestion
       );
     },
@@ -161,6 +165,7 @@ export function gameStore() {
       this.attacking = false;
       this.specialGauge = 0;
       this.specialGaugeDisplay = 0;
+      this.gaugeFull = false;
       this.cutIn = false;
       this.superAttacking = false;
       this.submitting = false;
@@ -201,6 +206,7 @@ export function gameStore() {
         this.attacking = false;
         this.specialGauge = 0;
         this.specialGaugeDisplay = 0;
+        this.gaugeFull = false;
         this.sessionToken = data.session_token;
         this.questionQueue = data.questions || [];
         this.questionIndex = 0;
@@ -280,10 +286,16 @@ export function gameStore() {
         }
 
         if (isSpecial) {
-          // Special flow: cut-in plays first, THEN the oni is struck, THEN we
-          // advance. fireSpecialAttack drives the whole sequence.
+          // Phase 0: fill gauge to 100, show rainbow + sparkle for ~750ms so
+          // the player can see it's full, then hand off to fireSpecialAttack.
           this.specialGaugeDisplay = 100;
-          this.fireSpecialAttack(dmg);
+          this.gaugeFull = true;
+          if (this.audio) this.audio.playSE('charge');
+          this.sparkleGaugeFull();
+          setTimeout(() => {
+            this.gaugeFull = false;
+            this.fireSpecialAttack(dmg);
+          }, 750);
           return;
         }
 
@@ -839,6 +851,61 @@ export function gameStore() {
         this.floatingTexts = this.floatingTexts.filter((f) => f.id !== id);
       }, 1000);
     },
+    // Burst of rainbow particle sparks around the 必殺技 gauge when it hits 100%.
+    // Three waves spaced 300ms apart so sparks keep appearing for the full wait.
+    sparkleGaugeFull() {
+      if (typeof document === 'undefined' || typeof window === 'undefined') return;
+      const gaugeEl = document.querySelector('[data-special-gauge]');
+      if (!gaugeEl || typeof document.createElement('div').animate !== 'function') return;
+
+      const gr = gaugeEl.getBoundingClientRect();
+      const colors = ['#ff0066', '#ff8800', '#ffee00', '#00f5d4', '#00aaff', '#aa00ff', '#f15bb5', '#ffffff'];
+
+      const layer = document.createElement('div');
+      layer.style.cssText =
+        'position:fixed;inset:0;z-index:85;pointer-events:none;overflow:hidden;contain:strict;';
+      document.body.appendChild(layer);
+
+      const spawnBurst = (count, startDelay) => {
+        for (let i = 0; i < count; i++) {
+          setTimeout(() => {
+            const spark = document.createElement('div');
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            const sz = 4 + Math.random() * 5;
+            spark.style.cssText =
+              `position:absolute;top:0;left:0;width:${sz}px;height:${sz}px;border-radius:50%;` +
+              `background:${color};box-shadow:0 0 ${sz * 2}px ${sz}px ${color};` +
+              'will-change:transform,opacity;';
+            layer.appendChild(spark);
+
+            // Origin: random point along the gauge bar
+            const ox = gr.left + Math.random() * gr.width;
+            const oy = gr.top + gr.height / 2;
+            const ang = Math.random() * Math.PI * 2;
+            const endR = 22 + Math.random() * 50;
+            const ex = ox + Math.cos(ang) * endR;
+            const ey = oy + Math.sin(ang) * endR;
+
+            const anim = spark.animate(
+              [
+                { transform: `translate(${ox}px,${oy}px) translate(-50%,-50%) scale(0)`, opacity: 0 },
+                { transform: `translate(${ox + (ex - ox) * 0.25}px,${oy + (ey - oy) * 0.25}px) translate(-50%,-50%) scale(1.5)`, opacity: 1, offset: 0.2 },
+                { transform: `translate(${ex}px,${ey}px) translate(-50%,-50%) scale(0)`, opacity: 0 },
+              ],
+              { duration: 420 + Math.random() * 230, easing: 'ease-out', fill: 'forwards' }
+            );
+            anim.onfinish = () => spark.remove();
+          }, startDelay + i * 35);
+        }
+      };
+
+      spawnBurst(10, 0);
+      spawnBurst(10, 280);
+      spawnBurst(8, 560);
+
+      setTimeout(() => layer.remove(), 2200);
+    },
+
     fireSpecialAttack(dmg) {
       // Phase 1 (0-1.3s): diagonal-band cut-in with its own sound. The main
       // 必殺技 sound is played later, synced to the ✕ slash impact (Phase 2).
