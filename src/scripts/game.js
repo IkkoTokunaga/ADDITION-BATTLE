@@ -743,7 +743,11 @@ export function gameStore() {
       const baseAngle = Math.atan2(baseDy, baseDx);
       const baseDist = Math.hypot(baseDx, baseDy);
 
-      const layer = this._makeFxLayer();
+      // Use a plain fixed layer at z-index 100 (above cut-in / all game UI).
+      // No `contain:strict` so nothing clips the chalks unexpectedly.
+      const layer = document.createElement('div');
+      layer.style.cssText = 'position:fixed;inset:0;z-index:100;pointer-events:none;overflow:hidden;';
+      document.body.appendChild(layer);
       const self = this;
       let cleaned = false;
       const cleanup = () => {
@@ -753,9 +757,9 @@ export function gameStore() {
       };
 
       const COUNT = 16;
-      const STAGGER = 52;
-      const FLIGHT = 300;
-      const SPREAD = 0.22; // radians of random spread around base angle
+      const STAGGER = 55;
+      const FLIGHT = 420;
+      const SPREAD = 0.22;
 
       for (let i = 0; i < COUNT; i++) {
         setTimeout(() => {
@@ -767,9 +771,9 @@ export function gameStore() {
 
           const chalk = document.createElement('div');
           chalk.style.cssText =
-            `position:absolute;left:${sx}px;top:${sy}px;width:22px;height:7px;border-radius:3px;` +
-            'background:linear-gradient(135deg,#f0ede8 0%,#ffffff 45%,#e8e4df 100%);' +
-            'box-shadow:0 1px 4px rgba(0,0,0,0.22),inset 0 1px 0 rgba(255,255,255,0.75);' +
+            `position:absolute;left:${sx}px;top:${sy}px;width:28px;height:9px;border-radius:4px;` +
+            'background:linear-gradient(135deg,#f5f2ed 0%,#ffffff 45%,#ede9e2 100%);' +
+            'box-shadow:0 0 6px rgba(255,255,255,0.9),0 2px 5px rgba(0,0,0,0.3);' +
             'transform-origin:50% 50%;will-change:transform,opacity;';
           layer.appendChild(chalk);
           chalk.animate(
@@ -790,20 +794,21 @@ export function gameStore() {
             for (let j = 0; j < dustCount; j++) {
               const dust = document.createElement('div');
               const ang = (j / dustCount) * Math.PI * 2;
-              const speed = (isLast ? 38 : 22) + Math.random() * 28;
-              const size = 4 + Math.round(Math.random() * (isLast ? 8 : 4));
+              const speed = (isLast ? 40 : 24) + Math.random() * 28;
+              const size = 5 + Math.round(Math.random() * (isLast ? 9 : 5));
               dust.style.cssText =
                 `position:absolute;left:${hitX}px;top:${hitY}px;` +
                 `width:${size}px;height:${size}px;border-radius:9999px;` +
-                'background:rgba(255,255,255,0.88);' +
-                'filter:blur(1px);will-change:transform,opacity;';
+                'background:rgba(255,255,255,0.92);' +
+                'box-shadow:0 0 4px rgba(255,255,255,0.7);' +
+                'filter:blur(0.8px);will-change:transform,opacity;';
               layer.appendChild(dust);
               dust.animate(
                 [
-                  { transform: `translate(-50%,-50%) translate(0px,0px) scale(1)`, opacity: 0.9 },
+                  { transform: `translate(-50%,-50%) translate(0px,0px) scale(1)`, opacity: 0.95 },
                   { transform: `translate(-50%,-50%) translate(${Math.cos(ang) * speed}px,${Math.sin(ang) * speed}px) scale(0.2)`, opacity: 0 },
                 ],
-                { duration: 340, easing: 'ease-out', fill: 'forwards' }
+                { duration: 380, easing: 'ease-out', fill: 'forwards' }
               );
             }
             if (i === COUNT - 1) setTimeout(cleanup, 500);
