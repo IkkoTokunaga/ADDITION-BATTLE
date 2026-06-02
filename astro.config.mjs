@@ -9,6 +9,7 @@ import tailwindcss from '@tailwindcss/vite';
 
 // https://astro.build/config
 export default defineConfig({
+  site: 'https://addition.ikk-dev.jp',
   output: 'server',
   integrations: [alpinejs()],
   adapter: vercel(),

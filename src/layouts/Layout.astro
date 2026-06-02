@@ -8,6 +8,10 @@ interface Props {
 }
 
 const { title = '鬼退治足し算バトル', description = '足し算で鬼を退治するバトル学習ゲーム' } = Astro.props;
+const siteUrl = 'https://addition.ikk-dev.jp';
+const ogTitle = title === '鬼退治足し算バトル' ? title : `${title} | 鬼退治足し算バトル`;
+const ogImage = `${siteUrl}/ogp.png`;
+const canonicalUrl = new URL(Astro.url.pathname, siteUrl).href;
 ---
 
 <!doctype html>
@@ -16,6 +20,26 @@ const { title = '鬼退治足し算バトル', description = '足し算で鬼を
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalUrl} />
+
+    <!-- OGP -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:site_name" content="鬼退治足し算バトル" />
+    <meta property="og:title" content={ogTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="ja_JP" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={ogTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+
+    <!-- Icons & PWA -->
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
@@ -23,7 +47,7 @@ const { title = '鬼退治足し算バトル', description = '足し算で鬼を
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="鬼退治" />
-    <title>{title} | 鬼退治足し算バトル</title>
+    <title>{ogTitle}</title>
     <ClientRouter />
   </head>
   <body class="min-h-screen flex flex-col">
