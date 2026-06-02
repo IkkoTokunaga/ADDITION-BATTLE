@@ -161,11 +161,12 @@ import Layout from '../layouts/Layout.astro';
         <template x-for="n in [7,8,9,4,5,6,1,2,3]" :key="n">
           <button type="button" class="key-btn h-14" @click="g.pressKey(n)" x-text="n"></button>
         </template>
-        <button type="button" class="key-btn h-14 text-[#fee440]" @click="g.backspace()">⌫</button>
+        <button type="button" class="key-btn h-14 text-[#fee440]" :disabled="!g.userInput" @click="g.backspace()">⌫</button>
         <button type="button" class="key-btn h-14" @click="g.pressKey(0)">0</button>
         <button
           type="button"
           class="h-14 rounded-14 btn-primary font-black text-lg"
+          :disabled="!g.userInput"
           @click="g.submitAnswer()"
         >決定</button>
       </div>
