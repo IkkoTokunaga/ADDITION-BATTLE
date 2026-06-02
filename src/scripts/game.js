@@ -889,35 +889,61 @@ export function gameStore() {
       const cx = or.left + or.width / 2;
       const cy = or.top + or.height / 2;
 
+      // z-index:95 — below floating-damage (z-index:110) so damage number shows on top.
       const layer = document.createElement('div');
-      layer.style.cssText = 'position:fixed;inset:0;z-index:100;pointer-events:none;overflow:hidden;';
+      layer.style.cssText = 'position:fixed;inset:0;z-index:95;pointer-events:none;overflow:hidden;';
       document.body.appendChild(layer);
 
-      const SMOKE_COUNT = 10;
-      const SMOKE_DUR = 900;
-      const STAGGER_S = 60;
+      const SMOKE_DUR = 1100;
+      const STAGGER_S = 40;
 
-      for (let i = 0; i < SMOKE_COUNT; i++) {
+      // Wave 1: dense small puffs that burst quickly.
+      const WAVE1 = 14;
+      for (let i = 0; i < WAVE1; i++) {
         const puff = document.createElement('div');
-        const size = 55 + Math.random() * 75;
-        const ox = (Math.random() - 0.5) * or.width * 1.1;
-        const oy = (Math.random() - 0.5) * or.height * 1.0;
+        const size = 50 + Math.random() * 70;
+        const ox = (Math.random() - 0.5) * or.width * 1.3;
+        const oy = (Math.random() - 0.5) * or.height * 1.2;
+        const alpha = 0.7 + Math.random() * 0.2;
         puff.style.cssText =
           `position:absolute;left:${cx + ox}px;top:${cy + oy}px;` +
           `width:${size}px;height:${size}px;border-radius:9999px;` +
-          'background:rgba(255,255,255,0.75);filter:blur(14px);will-change:transform,opacity;';
+          `background:rgba(255,255,255,${alpha});filter:blur(12px);will-change:transform,opacity;`;
         layer.appendChild(puff);
         puff.animate(
           [
-            { transform: 'translate(-50%,-50%) scale(0.2)', opacity: 0, offset: 0 },
-            { transform: 'translate(-50%,-50%) scale(1.1)', opacity: 0.85, offset: 0.25 },
-            { transform: 'translate(-50%,-50%) scale(1.7)', opacity: 0, offset: 1 },
+            { transform: 'translate(-50%,-50%) scale(0.15)', opacity: 0, offset: 0 },
+            { transform: 'translate(-50%,-50%) scale(1.05)', opacity: alpha, offset: 0.2 },
+            { transform: 'translate(-50%,-50%) scale(1.8)', opacity: 0, offset: 1 },
           ],
           { duration: SMOKE_DUR, delay: i * STAGGER_S, easing: 'ease-out', fill: 'forwards' }
         );
       }
 
-      const totalMs = SMOKE_DUR + SMOKE_COUNT * STAGGER_S;
+      // Wave 2: large billowing puffs that linger longer.
+      const WAVE2 = 12;
+      for (let i = 0; i < WAVE2; i++) {
+        const puff = document.createElement('div');
+        const size = 90 + Math.random() * 110;
+        const ox = (Math.random() - 0.5) * or.width * 1.5;
+        const oy = (Math.random() - 0.5) * or.height * 1.4;
+        const gray = Math.round(230 + Math.random() * 25);
+        puff.style.cssText =
+          `position:absolute;left:${cx + ox}px;top:${cy + oy}px;` +
+          `width:${size}px;height:${size}px;border-radius:9999px;` +
+          `background:rgba(${gray},${gray},${gray},0.65);filter:blur(20px);will-change:transform,opacity;`;
+        layer.appendChild(puff);
+        puff.animate(
+          [
+            { transform: 'translate(-50%,-50%) scale(0.2)', opacity: 0, offset: 0 },
+            { transform: 'translate(-50%,-50%) scale(1.0)', opacity: 0.75, offset: 0.3 },
+            { transform: `translate(-50%,calc(-50% - ${10 + Math.random() * 20}px)) scale(2.0)`, opacity: 0, offset: 1 },
+          ],
+          { duration: SMOKE_DUR + 200, delay: WAVE1 * STAGGER_S * 0.4 + i * STAGGER_S, easing: 'ease-out', fill: 'forwards' }
+        );
+      }
+
+      const totalMs = SMOKE_DUR + 200 + (WAVE1 + WAVE2) * STAGGER_S;
       setTimeout(() => {
         layer.remove();
         onDone();

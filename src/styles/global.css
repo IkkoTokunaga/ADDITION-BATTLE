@@ -199,6 +199,7 @@ body {
   color: var(--yellow);
   text-shadow: 0 0 14px rgba(254, 228, 64, 0.9), 0 2px 4px rgba(0, 0, 0, 0.6);
   pointer-events: none;
+  z-index: 110;
   animation: floatUpFade 1s ease-out forwards;
 }
 
