@@ -2,16 +2,23 @@
 @import 'tailwindcss';
 
 :root {
-  --bg-0: #0b0914;
-  --bg-1: #130f24;
-  --card: rgba(22, 18, 41, 0.75);
+  /* UI base — deep green (solid, no gradients) */
+  --bg-0: #03120b;
+  --bg-1: #06200f;
+  --card: rgba(8, 32, 20, 0.82);
+  --green-deep: #0a3d24;
+  --green: #1f7a4d;
+  --green-bright: #3ddc84;
+  --gold: #f5c518;
+  --text: #eaf5ee;
+  --text-dim: #9db8a8;
+
+  /* Battle 演出 accents (used only by gameplay effects) */
   --purple: #9b5de5;
   --pink: #f15bb5;
   --cyan: #00f5d4;
   --yellow: #fee440;
   --blue: #00bbf9;
-  --text: #f3f0ff;
-  --text-dim: #b5a9df;
 }
 
 html,
@@ -23,10 +30,7 @@ body {
 }
 
 body {
-  background:
-    radial-gradient(1200px 600px at 50% -10%, rgba(155, 93, 229, 0.18), transparent 60%),
-    radial-gradient(900px 500px at 100% 100%, rgba(0, 187, 249, 0.12), transparent 60%),
-    linear-gradient(160deg, var(--bg-1), var(--bg-0));
+  background: var(--bg-0);
   background-attachment: fixed;
   color: var(--text);
   font-family: 'M PLUS Rounded 1C', 'Outfit', system-ui, sans-serif;
@@ -36,12 +40,12 @@ body {
 /* ---------- Components ---------- */
 .glass-panel {
   background: var(--card);
-  border: 1px solid rgba(155, 93, 229, 0.25);
+  border: 1px solid rgba(31, 122, 77, 0.45);
   border-radius: 20px;
   backdrop-filter: blur(14px);
   box-shadow:
-    0 8px 40px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    0 8px 40px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .rounded-12 {
@@ -51,48 +55,53 @@ body {
 .btn-primary {
   position: relative;
   border-radius: 14px;
-  color: #fff;
-  background: linear-gradient(135deg, var(--purple), var(--pink));
-  box-shadow: 0 6px 24px rgba(241, 91, 181, 0.4);
+  color: #04140d;
+  background: var(--green-bright);
+  box-shadow:
+    0 5px 0 #0f7a44,
+    0 10px 22px rgba(0, 0, 0, 0.45);
   transition:
-    transform 0.12s ease,
-    box-shadow 0.2s ease,
-    filter 0.2s ease;
+    transform 0.1s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
 }
 .btn-primary:hover {
-  transform: translateY(-2px) scale(1.01);
-  box-shadow: 0 10px 30px rgba(241, 91, 181, 0.55);
-  filter: brightness(1.08);
+  background: #52e895;
+  transform: translateY(-2px);
+  box-shadow:
+    0 7px 0 #0f7a44,
+    0 14px 28px rgba(0, 0, 0, 0.5);
 }
 .btn-primary:active {
-  transform: translateY(0) scale(0.99);
+  transform: translateY(4px);
+  box-shadow: 0 1px 0 #0f7a44;
 }
 
 .btn-ghost {
   border-radius: 14px;
-  color: var(--text);
-  background: rgba(155, 93, 229, 0.12);
-  border: 1px solid rgba(155, 93, 229, 0.35);
+  color: var(--gold);
+  background: rgba(245, 197, 24, 0.08);
+  border: 1px solid rgba(245, 197, 24, 0.45);
   transition:
     background 0.2s ease,
     transform 0.12s ease;
 }
 .btn-ghost:hover {
-  background: rgba(155, 93, 229, 0.24);
+  background: rgba(245, 197, 24, 0.18);
   transform: translateY(-1px);
 }
 
 /* Numpad key */
 .key-btn {
   border-radius: 14px;
-  background: linear-gradient(180deg, rgba(46, 38, 78, 0.95), rgba(26, 21, 46, 0.95));
-  border: 1px solid rgba(155, 93, 229, 0.3);
+  background: #0c2c1c;
+  border: 1px solid rgba(31, 122, 77, 0.45);
   color: var(--text);
   font-weight: 800;
   font-size: 1.5rem;
   box-shadow:
-    0 4px 0 rgba(0, 0, 0, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    0 4px 0 rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
   transition:
     transform 0.08s ease,
     filter 0.12s ease;
@@ -106,6 +115,12 @@ body {
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
 }
 
+.glow-text-gold {
+  text-shadow: 0 0 16px rgba(245, 197, 24, 0.6);
+}
+.glow-text-green {
+  text-shadow: 0 0 16px rgba(61, 220, 132, 0.6);
+}
 .glow-text-purple {
   text-shadow: 0 0 18px rgba(155, 93, 229, 0.7);
 }
@@ -169,6 +184,49 @@ body {
 @keyframes gaugeFlow {
   0% { background-position: 0% 0; }
   100% { background-position: 250% 0; }
+}
+
+/* ---------- Button shine (キラーン) ---------- */
+.btn-shine {
+  overflow: hidden;
+  isolation: isolate;
+}
+.btn-shine::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 38%;
+  height: 100%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.15) 35%,
+    rgba(255, 255, 255, 0.85) 50%,
+    rgba(255, 255, 255, 0.15) 65%,
+    transparent 100%
+  );
+  transform: translateX(-160%) skewX(-22deg);
+  pointer-events: none;
+  animation: btnShine 4s ease-in-out infinite;
+}
+@keyframes btnShine {
+  0% { transform: translateX(-160%) skewX(-22deg); opacity: 0; }
+  6% { opacity: 1; }
+  20% { transform: translateX(320%) skewX(-22deg); opacity: 1; }
+  22%, 100% { transform: translateX(320%) skewX(-22deg); opacity: 0; }
+}
+
+/* ---------- Hero banner ---------- */
+.hero-banner {
+  position: relative;
+  border-radius: 22px;
+  overflow: hidden;
+  border: 2px solid rgba(61, 220, 132, 0.35);
+  box-shadow:
+    0 12px 50px rgba(0, 0, 0, 0.6),
+    0 0 40px rgba(31, 122, 77, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 /* ---------- Animations ---------- */

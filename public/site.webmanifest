@@ -1,12 +1,12 @@
 {
-  "name": "鬼退治足し算バトル",
-  "short_name": "鬼退治",
-  "description": "足し算で鬼を退治するバトル学習ゲーム",
+  "name": "鬼と学ぼう！算数アドベンチャー",
+  "short_name": "算数アドベンチャー",
+  "description": "おにの学校で楽しく学べる算数アプリ",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0b0914",
-  "theme_color": "#0b0914",
+  "background_color": "#03120b",
+  "theme_color": "#03120b",
   "icons": [
     {
       "src": "/icons/icon-192.png",

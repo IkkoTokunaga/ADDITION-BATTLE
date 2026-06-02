@@ -2,7 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 ---
 
-<Layout title="スタート" description="鬼退治足し算バトルで楽しく算数を学ぼう！名前を入力してバトル開始！">
+<Layout title="スタート" description="鬼と学ぼう！算数アドベンチャー — おにの学校で楽しく算数を学ぼう！">
   <div
     x-data="{
       init() {
@@ -17,33 +17,41 @@ import Layout from '../layouts/Layout.astro';
         }
       }
     }"
-    class="w-full max-w-lg mx-auto flex flex-col items-center justify-center gap-6 py-4"
+    class="w-full max-w-5xl mx-auto flex flex-col items-center justify-center gap-5 py-2"
   >
-    <!-- Title -->
-    <div class="text-center flex flex-col items-center gap-3">
-      <div class="relative w-28 h-40 flex items-center justify-center bg-[#130f24]/40 rounded-2xl overflow-hidden float-idle border border-[#9b5de5]/20">
-        <img src="/images/女教師.png" alt="数学の女教師" class="w-full h-full object-contain" />
+    <!-- Hero banner (responsive: mobile / pc) with overlaid start button -->
+    <div class="relative w-full hero-banner">
+      <h1 class="sr-only">鬼と学ぼう！算数アドベンチャー 〜 おにの学校で楽しく学べる算数アプリ 〜</h1>
+      <picture>
+        <source media="(min-width: 768px)" srcset="/images/top-pc.png" />
+        <img
+          src="/images/top-mobile.png"
+          alt="鬼と学ぼう！算数アドベンチャー — おにの学校で楽しく学べる算数アプリ"
+          class="block w-full h-auto"
+          fetchpriority="high"
+        />
+      </picture>
+
+      <!-- Overlaid CTA -->
+      <div class="absolute inset-x-0 bottom-0 flex justify-center pb-[5%]">
+        <button
+          type="button"
+          @click="start()"
+          class="btn-primary btn-shine font-black px-10 sm:px-14 py-3 sm:py-4 text-lg sm:text-2xl tracking-wider"
+        >
+          修行を開始する！
+        </button>
       </div>
-      <h1 class="text-3xl md:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[#9b5de5] via-[#f15bb5] to-[#fee440] glow-text-purple">
-        鬼退治足し算バトル
-      </h1>
-      <p class="text-xs md:text-sm text-[#b5a9df]">〜 計算力を鍛えて強力な鬼を撃破せよ！ 〜</p>
     </div>
 
-    <!-- Start panel -->
-    <div class="w-full glass-panel p-6 md:p-8 flex flex-col gap-5">
-      <button
-        type="button"
-        @click="start()"
-        class="w-full btn-primary font-black py-4 text-xl tracking-wider"
-      >
-        修行を開始する！
-      </button>
-    </div>
+    <!-- Secondary actions -->
+    <a href="/ranking" class="btn-ghost text-center font-bold px-6 py-2.5 text-sm">
+      🏆 ランキングを見る
+    </a>
 
     <!-- Rules -->
-    <div class="w-full text-center text-xs text-[#b5a9df]/70 leading-relaxed max-w-sm">
-      <p class="font-bold text-[#fee440] mb-1">【ゲームのルール】</p>
+    <div class="w-full text-center text-xs text-[#9db8a8] leading-relaxed max-w-md">
+      <p class="font-bold text-[#f5c518] mb-1">【ゲームのルール】</p>
       <p>
         足し算の答えをテンキーかキーボードで入力しよう。正解すると鬼にダメージ（速く答えるほど高得点！）、間違えると女教師のライフが1つ減少します。ライフ3個を守りながら鬼を倒そう！
       </p>
