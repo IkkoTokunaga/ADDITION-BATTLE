@@ -148,6 +148,16 @@ class AudioManager {
     if (this._unlocked) {
       el.play().catch(() => {});
     }
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: '鬼退治足し算バトル',
+        artist: '鬼退治足し算バトル',
+        artwork: [
+          { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+        ],
+      });
+    }
   }
 
   bgmForStage(stage) {

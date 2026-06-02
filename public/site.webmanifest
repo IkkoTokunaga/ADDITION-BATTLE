@@ -1,0 +1,24 @@
+{
+  "name": "鬼退治足し算バトル",
+  "short_name": "鬼退治",
+  "description": "足し算で鬼を退治するバトル学習ゲーム",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0914",
+  "theme_color": "#0b0914",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
