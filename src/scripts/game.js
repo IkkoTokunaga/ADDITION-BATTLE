@@ -724,9 +724,8 @@ export function gameStore() {
     },
 
     // Special attack: barrage of chalk pieces fired in rapid succession.
-    // Runs during the superAttacking window (~1050ms). No onHit callback
-    // needed — damage is applied before this is called.
-    fireChalkBarrage() {
+    // `onAllHit` is called the moment the last chalk reaches the oni.
+    fireChalkBarrage(onAllHit) {
       if (typeof document === 'undefined' || typeof window === 'undefined') return;
       const teacher = document.querySelector('[data-mascot]');
       const oni = document.querySelector('[data-oni]');
@@ -811,13 +810,67 @@ export function gameStore() {
                 { duration: 380, easing: 'ease-out', fill: 'forwards' }
               );
             }
-            if (i === COUNT - 1) setTimeout(cleanup, 500);
+            if (i === COUNT - 1) {
+              if (onAllHit) onAllHit();
+              setTimeout(cleanup, 500);
+            }
           }, FLIGHT);
         }, i * STAGGER);
       }
 
       // Safety net.
       setTimeout(cleanup, COUNT * STAGGER + FLIGHT + 700);
+    },
+
+    // Show a white chalk-dust smoke cloud covering the oni, then call onDone
+    // once the smoke fades. Used between the chalk barrage and the defeat animation.
+    chalkSmokeOnOni(onDone) {
+      if (typeof document === 'undefined' || typeof window === 'undefined') {
+        onDone();
+        return;
+      }
+      const oni = document.querySelector('[data-oni]');
+      if (!oni || typeof document.createElement('div').animate !== 'function') {
+        onDone();
+        return;
+      }
+      const or = oni.getBoundingClientRect();
+      const cx = or.left + or.width / 2;
+      const cy = or.top + or.height / 2;
+
+      const layer = document.createElement('div');
+      layer.style.cssText = 'position:fixed;inset:0;z-index:100;pointer-events:none;overflow:hidden;';
+      document.body.appendChild(layer);
+
+      const SMOKE_COUNT = 10;
+      const SMOKE_DUR = 900;
+      const STAGGER_S = 60;
+
+      for (let i = 0; i < SMOKE_COUNT; i++) {
+        const puff = document.createElement('div');
+        const size = 55 + Math.random() * 75;
+        const ox = (Math.random() - 0.5) * or.width * 1.1;
+        const oy = (Math.random() - 0.5) * or.height * 1.0;
+        puff.style.cssText =
+          `position:absolute;left:${cx + ox}px;top:${cy + oy}px;` +
+          `width:${size}px;height:${size}px;border-radius:9999px;` +
+          'background:rgba(255,255,255,0.75);filter:blur(14px);will-change:transform,opacity;';
+        layer.appendChild(puff);
+        puff.animate(
+          [
+            { transform: 'translate(-50%,-50%) scale(0.2)', opacity: 0, offset: 0 },
+            { transform: 'translate(-50%,-50%) scale(1.1)', opacity: 0.85, offset: 0.25 },
+            { transform: 'translate(-50%,-50%) scale(1.7)', opacity: 0, offset: 1 },
+          ],
+          { duration: SMOKE_DUR, delay: i * STAGGER_S, easing: 'ease-out', fill: 'forwards' }
+        );
+      }
+
+      const totalMs = SMOKE_DUR + SMOKE_COUNT * STAGGER_S;
+      setTimeout(() => {
+        layer.remove();
+        onDone();
+      }, totalMs);
     },
 
     // Wrong answer: 鬼 hurls a toxic ball at 女教師. `onHit` runs when the ball
@@ -1021,17 +1074,31 @@ export function gameStore() {
         // Gauge empties as the 必殺技 fires.
         this.specialGaugeDisplay = 0;
         if (this.audio) this.audio.playSE('special');
-        this.fireChalkBarrage();
+        const isKill = this.oniHp <= 0;
+        // Phase 3: resolve after all chalk lands.
+        // On a kill shot: last chalk hits → smoke cloud → defeat animation.
+        // Otherwise: last chalk hits → next question immediately.
+        let resolved = false;
+        const resolve = () => {
+          if (resolved) return;
+          resolved = true;
+          this.superAttacking = false;
+          this.resolveAfterAttack();
+        };
+        this.fireChalkBarrage(() => {
+          if (isKill) {
+            this.chalkSmokeOnOni(resolve);
+          } else {
+            resolve();
+          }
+        });
         const id = ++this._floatId;
         this.floatingTexts.push({ id, value: dmg, special: true });
         setTimeout(() => {
           this.floatingTexts = this.floatingTexts.filter((f) => f.id !== id);
         }, 1200);
-        // Phase 3: resolve (next question, or stage clear / explosion).
-        setTimeout(() => {
-          this.superAttacking = false;
-          this.resolveAfterAttack();
-        }, 1050);
+        // Safety net: resolve after 5s regardless, to prevent a stuck state.
+        setTimeout(resolve, 5000);
       }, 1300);
     },
     takeDamageEffect() {
