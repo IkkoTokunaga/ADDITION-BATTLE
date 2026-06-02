@@ -735,12 +735,6 @@ export function gameStore() {
       const or = oni.getBoundingClientRect();
       const sx = tr.right - tr.width * 0.12;
       const sy = tr.top + tr.height * 0.42;
-      const ex = or.left + or.width * 0.5;
-      const ey = or.top + or.height * 0.4;
-      const baseDx = ex - sx;
-      const baseDy = ey - sy;
-      const baseAngle = Math.atan2(baseDy, baseDx);
-      const baseDist = Math.hypot(baseDx, baseDy);
 
       // Use a plain fixed layer at z-index 100 (above cut-in / all game UI).
       // No `contain:strict` so nothing clips the chalks unexpectedly.
@@ -758,21 +752,33 @@ export function gameStore() {
       const COUNT = 16;
       const STAGGER = 55;
       const FLIGHT = 420;
-      const SPREAD = 0.22;
+
+      const PASTEL_COLORS = [
+        { bg: '#FFB3C6', glow: 'rgba(255,140,180,0.7)' }, // ピンク
+        { bg: '#BAE1FF', glow: 'rgba(140,200,255,0.7)' }, // 水色
+        { bg: '#FFF3A8', glow: 'rgba(255,230,100,0.7)' }, // 黄色
+        { bg: '#B8F0B8', glow: 'rgba(140,230,140,0.7)' }, // 緑
+        { bg: '#FFD4A8', glow: 'rgba(255,190,120,0.7)' }, // オレンジ
+        { bg: '#DDB8FF', glow: 'rgba(200,140,255,0.7)' }, // 紫
+        { bg: '#B5EAD7', glow: 'rgba(130,220,190,0.7)' }, // ミント
+        { bg: '#FFDAC1', glow: 'rgba(255,200,160,0.7)' }, // ピーチ
+      ];
 
       for (let i = 0; i < COUNT; i++) {
         setTimeout(() => {
-          const angle = baseAngle + (Math.random() - 0.5) * SPREAD;
-          const dist = baseDist * (0.88 + Math.random() * 0.2);
-          const dx = Math.cos(angle) * dist;
-          const dy = Math.sin(angle) * dist;
+          // Each chalk targets a random point spread across the oni's body.
+          const targetX = or.left + or.width * (0.15 + Math.random() * 0.7);
+          const targetY = or.top + or.height * (0.08 + Math.random() * 0.78);
+          const dx = targetX - sx;
+          const dy = targetY - sy;
           const spinDir = Math.random() > 0.5 ? 360 : -360;
+          const color = PASTEL_COLORS[Math.floor(Math.random() * PASTEL_COLORS.length)];
 
           const chalk = document.createElement('div');
           chalk.style.cssText =
             `position:absolute;left:${sx}px;top:${sy}px;width:28px;height:9px;border-radius:4px;` +
-            'background:linear-gradient(135deg,#f5f2ed 0%,#ffffff 45%,#ede9e2 100%);' +
-            'box-shadow:0 0 6px rgba(255,255,255,0.9),0 2px 5px rgba(0,0,0,0.3);' +
+            `background:${color.bg};` +
+            `box-shadow:0 0 7px ${color.glow},0 2px 4px rgba(0,0,0,0.25);` +
             'transform-origin:50% 50%;will-change:transform,opacity;';
           layer.appendChild(chalk);
           chalk.animate(
@@ -798,8 +804,8 @@ export function gameStore() {
               dust.style.cssText =
                 `position:absolute;left:${hitX}px;top:${hitY}px;` +
                 `width:${size}px;height:${size}px;border-radius:9999px;` +
-                'background:rgba(255,255,255,0.92);' +
-                'box-shadow:0 0 4px rgba(255,255,255,0.7);' +
+                `background:${color.bg};` +
+                `box-shadow:0 0 4px ${color.glow};` +
                 'filter:blur(0.8px);will-change:transform,opacity;';
               layer.appendChild(dust);
               dust.animate(
