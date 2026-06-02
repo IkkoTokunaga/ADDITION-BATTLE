@@ -332,6 +332,9 @@ export function gameStore() {
         return;
       }
       if (this.oniHp <= 0) {
+        // Oni defeated: blank the question until the next stage's oni is ready,
+        // so the just-answered problem doesn't linger during the defeat anim.
+        this.currentQuestion = null;
         this.clearStage();
         return;
       }
