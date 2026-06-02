@@ -116,27 +116,27 @@ body {
   text-shadow: 0 0 18px rgba(241, 91, 181, 0.7);
 }
 
-/* Oni aura glow — a standalone element behind the oni img so it always renders
-   outside the PNG's CSS bounding box and is never overridden by animation filters. */
+/* Oni aura glow — sits in DOM before the img (natural back-to-front order).
+   No filter/z-index so it never creates a stacking context that could hide it
+   behind the img or conflict with floating-damage z-ordering. */
 .oni-aura {
   position: absolute;
   left: 50%;
   bottom: 0;
   transform: translateX(-50%);
-  /* Intentionally wider/taller than the img so the glow extends well outside */
-  width: 170%;
-  height: 115%;
+  /* Larger than the img so the glow extends outside its CSS bounding box */
+  width: 180%;
+  height: 120%;
   pointer-events: none;
-  z-index: 0;
   border-radius: 50%;
+  /* Radial gradient fades naturally to transparent — no filter needed */
   background: radial-gradient(
-    ellipse at 50% 62%,
-    rgba(241, 91, 181, 0.60)  0%,
-    rgba(241, 91, 181, 0.30) 32%,
-    rgba(241, 91, 181, 0.10) 56%,
-    transparent               74%
+    ellipse at 50% 60%,
+    rgba(241, 91, 181, 0.65)  0%,
+    rgba(241, 91, 181, 0.35) 28%,
+    rgba(241, 91, 181, 0.12) 52%,
+    transparent               70%
   );
-  filter: blur(14px);
   transition: opacity 0.35s ease;
 }
 

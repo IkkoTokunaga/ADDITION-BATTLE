@@ -108,7 +108,7 @@ import Layout from '../layouts/Layout.astro';
             :src="oniImages[Math.min(Math.max(g.stage,1),12)-1]"
             alt="鬼"
             data-oni
-            class="h-48 sm:h-56 w-auto object-contain relative z-10"
+            class="h-48 sm:h-56 w-auto object-contain"
             :class="{ 'is-shaking': g.shaking, 'is-exploding': g.explode }"
             :style="(g.oniDefeated || !g.oniImgReady) ? 'visibility:hidden' : ''"
             @load="g.oniImgReady = true"
