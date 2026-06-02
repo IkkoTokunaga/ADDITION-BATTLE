@@ -176,6 +176,7 @@ export function gameStore() {
       this.submitted = false;
       this.submitError = '';
       this.savedName = '';
+      this.navigating = false;
       if (this.audio) this.audio.playBGM('home');
     },
 
@@ -432,9 +433,13 @@ export function gameStore() {
     async proceedToNextStage() {
       if (this.navigating) return;
       this.navigating = true;
-      this.stageCleared = false;
-      if (this.audio) this.audio.playSE('stage_intro');
-      await this.loadStage(this.stage + 1, this.carryToken);
+      try {
+        this.stageCleared = false;
+        if (this.audio) this.audio.playSE('stage_intro');
+        await this.loadStage(this.stage + 1, this.carryToken);
+      } finally {
+        this.navigating = false;
+      }
     },
 
     async endGame() {
