@@ -566,7 +566,6 @@ export function gameStore() {
 
       const arrive = () => {
         advance();
-        if (self.audio) self.audio.playSE('keypad');
         if (gaugeEl.animate) {
           gaugeEl.animate(
             [
