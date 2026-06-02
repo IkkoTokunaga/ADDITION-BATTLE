@@ -800,7 +800,7 @@ export function gameStore() {
             const isLast = i >= COUNT - 3;
             const hitX = sx + dx;
             const hitY = sy + dy;
-            if (isLast && self.audio) self.audio.playSE('chalk_hit');
+            if (self.audio) self.audio.playSE('chalk_hit');
 
             const DUST_DUR = 650;
 
@@ -894,6 +894,8 @@ export function gameStore() {
       const or = oni.getBoundingClientRect();
       const cx = or.left + or.width / 2;
       const cy = or.top + or.height / 2;
+
+      if (this.audio) this.audio.playSE('explosion');
 
       // z-index:95 — below floating-damage (z-index:110) so damage number shows on top.
       const layer = document.createElement('div');
@@ -1142,16 +1144,14 @@ export function gameStore() {
     },
 
     fireSpecialAttack(dmg) {
-      // Phase 1 (0-1.3s): diagonal-band cut-in with its own sound. The main
-      // 必殺技 sound is played later, synced to the ✕ slash impact (Phase 2).
-      // The oni is NOT hit yet. Input is locked via `cutIn`.
+      // Phase 1 (0-1.3s): diagonal-band cut-in with its own sound.
+      // Phase 2: chalk barrage — each chalk plays chalk_hit on impact.
       this.cutIn = true;
       if (this.audio) this.audio.playSE('special_cutin');
       setTimeout(() => {
         this.cutIn = false;
         this.superAttacking = true;
         this.specialGaugeDisplay = 0;
-        if (this.audio) this.audio.playSE('special');
         // Pre-check kill before damage is applied (damage lands when dust fades).
         const isKill = this.totalDamage + dmg >= this.oniMaxHp;
         let resolved = false;

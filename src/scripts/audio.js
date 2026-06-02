@@ -11,6 +11,7 @@ const SE_FILES = {
   oni_attack: '鬼攻撃',
   laser: 'ビーム砲',
   chalk_hit: 'チョーク攻撃',
+  explosion: '爆発',
   charge: '光玉溜め',
   special: '必殺技',
   special_cutin: '必殺技カットイン',
