@@ -789,43 +789,88 @@ export function gameStore() {
             { duration: FLIGHT, easing: 'linear', fill: 'forwards' }
           );
 
-          // Dust cloud on impact.
+          // Dust burst on impact.
           setTimeout(() => {
             const isLast = i >= COUNT - 3;
-            const dustCount = isLast ? 10 : 5;
             const hitX = sx + dx;
             const hitY = sy + dy;
             if (isLast && self.audio) self.audio.playSE('chalk_hit');
+
+            const DUST_DUR = 650;
+
+            // Center flash: a bright pop that expands and fades.
+            const flash = document.createElement('div');
+            const flashSize = isLast ? 44 : 28;
+            flash.style.cssText =
+              `position:absolute;left:${hitX}px;top:${hitY}px;` +
+              `width:${flashSize}px;height:${flashSize}px;border-radius:9999px;` +
+              `background:${color.bg};box-shadow:0 0 18px ${color.glow};` +
+              'will-change:transform,opacity;';
+            layer.appendChild(flash);
+            flash.animate(
+              [
+                { transform: 'translate(-50%,-50%) scale(0.4)', opacity: 1 },
+                { transform: 'translate(-50%,-50%) scale(2.4)', opacity: 0 },
+              ],
+              { duration: 280, easing: 'ease-out', fill: 'forwards' }
+            );
+
+            // Main burst: fast particles radiating outward.
+            const dustCount = isLast ? 20 : 12;
             for (let j = 0; j < dustCount; j++) {
               const dust = document.createElement('div');
-              const ang = (j / dustCount) * Math.PI * 2;
-              const speed = (isLast ? 40 : 24) + Math.random() * 28;
-              const size = 5 + Math.round(Math.random() * (isLast ? 9 : 5));
+              const ang = (j / dustCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+              const speed = (isLast ? 55 : 36) + Math.random() * 42;
+              const size = 7 + Math.round(Math.random() * (isLast ? 14 : 9));
               dust.style.cssText =
                 `position:absolute;left:${hitX}px;top:${hitY}px;` +
                 `width:${size}px;height:${size}px;border-radius:9999px;` +
-                `background:${color.bg};` +
-                `box-shadow:0 0 4px ${color.glow};` +
-                'filter:blur(0.8px);will-change:transform,opacity;';
+                `background:${color.bg};box-shadow:0 0 6px ${color.glow};` +
+                'filter:blur(0.6px);will-change:transform,opacity;';
               layer.appendChild(dust);
               dust.animate(
                 [
-                  { transform: `translate(-50%,-50%) translate(0px,0px) scale(1)`, opacity: 0.95 },
-                  { transform: `translate(-50%,-50%) translate(${Math.cos(ang) * speed}px,${Math.sin(ang) * speed}px) scale(0.2)`, opacity: 0 },
+                  { transform: `translate(-50%,-50%) scale(1)`, opacity: 1, offset: 0 },
+                  { transform: `translate(-50%,-50%) translate(${Math.cos(ang) * speed * 0.6}px,${Math.sin(ang) * speed * 0.6}px) scale(0.9)`, opacity: 0.9, offset: 0.3 },
+                  { transform: `translate(-50%,-50%) translate(${Math.cos(ang) * speed}px,${Math.sin(ang) * speed}px) scale(0.15)`, opacity: 0 },
                 ],
-                { duration: 380, easing: 'ease-out', fill: 'forwards' }
+                { duration: DUST_DUR, easing: 'ease-out', fill: 'forwards' }
               );
             }
+
+            // Lingering drift: a few larger puffs that float upward slowly.
+            const driftCount = isLast ? 6 : 3;
+            for (let j = 0; j < driftCount; j++) {
+              const puff = document.createElement('div');
+              const size = 12 + Math.round(Math.random() * (isLast ? 18 : 10));
+              const ox = (Math.random() - 0.5) * 30;
+              puff.style.cssText =
+                `position:absolute;left:${hitX + ox}px;top:${hitY}px;` +
+                `width:${size}px;height:${size}px;border-radius:9999px;` +
+                `background:${color.bg};` +
+                'filter:blur(3px);will-change:transform,opacity;';
+              layer.appendChild(puff);
+              puff.animate(
+                [
+                  { transform: 'translate(-50%,-50%) scale(0.6)', opacity: 0.7, offset: 0 },
+                  { transform: `translate(-50%,-50%) translateY(-${18 + Math.random() * 20}px) scale(1.2)`, opacity: 0.5, offset: 0.5 },
+                  { transform: `translate(-50%,-50%) translateY(-${35 + Math.random() * 25}px) scale(0.4)`, opacity: 0 },
+                ],
+                { duration: DUST_DUR + 150, easing: 'ease-out', fill: 'forwards' }
+              );
+            }
+
             if (i === COUNT - 1) {
-              if (onAllHit) onAllHit();
-              setTimeout(cleanup, 500);
+              // onAllHit fires when dust is fading (~80% through animation).
+              setTimeout(() => { if (onAllHit) onAllHit(); }, Math.round(DUST_DUR * 0.8));
+              setTimeout(cleanup, DUST_DUR + 400);
             }
           }, FLIGHT);
         }, i * STAGGER);
       }
 
       // Safety net.
-      setTimeout(cleanup, COUNT * STAGGER + FLIGHT + 700);
+      setTimeout(cleanup, COUNT * STAGGER + FLIGHT + FLIGHT + 900);
     },
 
     // Show a white chalk-dust smoke cloud covering the oni, then call onDone
