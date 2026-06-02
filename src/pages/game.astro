@@ -23,6 +23,10 @@ import Layout from '../layouts/Layout.astro';
       init() {
         if (!this.g.started) {
           if (window.astroNavigate) window.astroNavigate('/'); else window.location.href = '/';
+          return;
+        }
+        if (this.g.audio) {
+          this.g.audio.playBGM(this.g.audio.bgmForStage(this.g.stage));
         }
       }
     }"
