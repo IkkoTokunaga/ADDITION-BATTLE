@@ -24,6 +24,7 @@ export function gameStore() {
     submitted: false,
     submitError: '',
     savedName: '',
+    savedScoreId: null,
 
     // run state
     started: false,
@@ -472,9 +473,11 @@ export function gameStore() {
         if (data && data.saved) {
           this.submitted = true;
           this.savedName = data.username || name || this.defaultGuestName;
+          this.savedScoreId = data.score_id ?? null;
         } else if (data && data.error === 'already_submitted') {
           this.submitted = true;
           this.savedName = name || this.defaultGuestName;
+          this.savedScoreId = data.score_id ?? null;
           this.submitError = 'この結果は登録済みです';
         } else {
           this.submitError = '登録に失敗しました。もう一度お試しください';
@@ -491,7 +494,7 @@ export function gameStore() {
       navigate('/');
     },
     goRanking() {
-      navigate('/ranking');
+      navigate(this.savedScoreId ? `/ranking?r=${this.savedScoreId}` : '/ranking');
     },
 
     // ---- effects ----

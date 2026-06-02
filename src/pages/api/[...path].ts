@@ -351,7 +351,15 @@ app.post('/scores/submit', async (c) => {
     const scoreId: number | null = result.rows[0]?.id ?? null;
     if (scoreId === null) {
       // Unique constraint hit: this exact result was already registered.
-      return c.json({ error: 'already_submitted', saved: false }, 409);
+      // Return the existing row's id so the client can still show its rank.
+      const existing = await query(
+        'SELECT id FROM scores WHERE result_hash = $1',
+        [resultHash]
+      );
+      return c.json(
+        { error: 'already_submitted', saved: false, score_id: existing.rows[0]?.id ?? null },
+        409
+      );
     }
 
     // Async (non-blocking) bulk insert of question logs.
@@ -382,6 +390,7 @@ app.post('/scores/submit', async (c) => {
       username,
       score: r.finalCumulative,
       stage: r.reachedStage,
+      score_id: scoreId,
     });
   } catch (err) {
     console.error('score submit failed', err);
