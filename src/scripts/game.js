@@ -302,9 +302,9 @@ export function gameStore() {
         if (this.audio) this.audio.playSE('correct');
         // Light orbs gather to the 必殺技 gauge bar and advance it.
         this.spawnGaugeOrbs(this.specialGauge);
-        // 女教師 fires a beam at the oni; damage only lands on impact.
+        // 女教師 がチョークを投げる；鬼に命中した瞬間にダメージが入る。
         this.attacking = true;
-        this.fireBeam(() => {
+        this.throwChalk(() => {
           this.attacking = false;
           this.score += dmg;
           this.totalDamage += dmg;
@@ -632,9 +632,9 @@ export function gameStore() {
       return layer;
     },
 
-    // Correct answer: 女教師 fires a beam at the 鬼. `onHit` runs the instant
-    // the beam reaches the oni (applies damage + resolves the turn).
-    fireBeam(onHit) {
+    // Correct answer: 女教師 throws chalk at the 鬼. `onHit` runs the instant
+    // the chalk reaches the oni (applies damage + resolves the turn).
+    throwChalk(onHit) {
       if (typeof document === 'undefined' || typeof window === 'undefined') {
         onHit();
         return;
@@ -647,12 +647,14 @@ export function gameStore() {
       }
       const tr = teacher.getBoundingClientRect();
       const or = oni.getBoundingClientRect();
+      // Launch from the teacher's right hand area.
       const sx = tr.right - tr.width * 0.12;
       const sy = tr.top + tr.height * 0.42;
+      // Aim at the oni's upper torso.
       const ex = or.left + or.width * 0.5;
-      const ey = or.top + or.height * 0.5;
-      const dist = Math.hypot(ex - sx, ey - sy);
-      const ang = (Math.atan2(ey - sy, ex - sx) * 180) / Math.PI;
+      const ey = or.top + or.height * 0.35;
+      const dx = ex - sx;
+      const dy = ey - sy;
 
       const layer = this._makeFxLayer();
       const self = this;
@@ -663,53 +665,62 @@ export function gameStore() {
         layer.remove();
       };
 
-      if (self.audio) self.audio.playSE('laser');
+      // Chalk piece: small white-cream rectangle that spins during flight.
+      const chalk = document.createElement('div');
+      chalk.style.cssText =
+        `position:absolute;left:${sx}px;top:${sy}px;width:22px;height:7px;border-radius:3px;` +
+        'background:linear-gradient(135deg,#f0ede8 0%,#ffffff 45%,#e8e4df 100%);' +
+        'box-shadow:0 1px 4px rgba(0,0,0,0.22),inset 0 1px 0 rgba(255,255,255,0.75);' +
+        'transform-origin:50% 50%;will-change:transform,opacity;';
+      layer.appendChild(chalk);
 
-      const beam = document.createElement('div');
-      beam.style.cssText =
-        `position:absolute;left:${sx}px;top:${sy}px;height:7px;width:${dist}px;` +
-        'transform-origin:0 50%;border-radius:9999px;' +
-        'background:linear-gradient(90deg,rgba(255,255,255,0.95),rgba(0,245,212,0.9) 45%,rgba(0,187,249,0.85));' +
-        'box-shadow:0 0 14px rgba(0,245,212,0.85),0 0 26px rgba(0,187,249,0.55);' +
-        'filter:blur(0.4px);will-change:transform,opacity;';
-      layer.appendChild(beam);
-      beam.animate(
+      const flightDur = 380;
+      chalk.animate(
         [
-          { transform: `translateY(-50%) rotate(${ang}deg) scaleX(0)`, opacity: 0.3 },
-          { transform: `translateY(-50%) rotate(${ang}deg) scaleX(1)`, opacity: 1, offset: 0.35 },
-          { transform: `translateY(-50%) rotate(${ang}deg) scaleX(1)`, opacity: 1, offset: 0.72 },
-          { transform: `translateY(-50%) rotate(${ang}deg) scaleX(1)`, opacity: 0 },
+          { transform: `translate(-50%,-50%) translate(0px,0px) rotate(0deg)`, opacity: 1 },
+          { transform: `translate(-50%,-50%) translate(${dx}px,${dy}px) rotate(360deg)`, opacity: 1 },
         ],
-        { duration: 420, easing: 'ease-out', fill: 'forwards' }
+        { duration: flightDur, easing: 'linear', fill: 'forwards' }
       );
 
       let hit = false;
       const strike = () => {
         if (hit) return;
         hit = true;
-        const flash = document.createElement('div');
-        flash.style.cssText =
-          `position:absolute;left:${ex}px;top:${ey}px;width:96px;height:96px;border-radius:9999px;` +
-          'background:radial-gradient(circle,rgba(255,255,255,0.9),rgba(0,245,212,0.5) 42%,rgba(0,245,212,0) 70%);' +
-          'will-change:transform,opacity;';
-        layer.appendChild(flash);
-        flash.animate(
-          [
-            { transform: 'translate(-50%,-50%) scale(0.3)', opacity: 0.9 },
-            { transform: 'translate(-50%,-50%) scale(1.15)', opacity: 0 },
-          ],
-          { duration: 360, easing: 'ease-out', fill: 'forwards' }
-        );
+        if (self.audio) self.audio.playSE('chalk_hit');
+        // Chalk dust: small white/cream particles scatter on impact.
+        const dustCount = 7;
+        for (let i = 0; i < dustCount; i++) {
+          const dust = document.createElement('div');
+          const ang = (i / dustCount) * Math.PI * 2;
+          const speed = 28 + Math.random() * 36;
+          const tdx = Math.cos(ang) * speed;
+          const tdy = Math.sin(ang) * speed;
+          const size = 5 + Math.round(Math.random() * 5);
+          dust.style.cssText =
+            `position:absolute;left:${ex}px;top:${ey}px;` +
+            `width:${size}px;height:${size}px;border-radius:9999px;` +
+            'background:rgba(255,255,255,0.88);' +
+            'filter:blur(1px);will-change:transform,opacity;';
+          layer.appendChild(dust);
+          dust.animate(
+            [
+              { transform: `translate(-50%,-50%) translate(0px,0px) scale(1)`, opacity: 0.9 },
+              { transform: `translate(-50%,-50%) translate(${tdx}px,${tdy}px) scale(0.2)`, opacity: 0 },
+            ],
+            { duration: 340, easing: 'ease-out', fill: 'forwards' }
+          );
+        }
         onHit();
         setTimeout(cleanup, 420);
       };
-      // Beam reaches the oni when scaleX hits 1 (~35% of 420ms).
-      setTimeout(strike, 150);
+      // Chalk arrives after flightDur.
+      setTimeout(strike, flightDur);
       // Safety net in case the timer is starved.
       setTimeout(() => {
         strike();
         cleanup();
-      }, 1200);
+      }, 1400);
     },
 
     // Wrong answer: 鬼 hurls a toxic ball at 女教師. `onHit` runs when the ball
