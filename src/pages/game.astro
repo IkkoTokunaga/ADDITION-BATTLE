@@ -145,7 +145,7 @@ import Layout from '../layouts/Layout.astro';
          landscape: question left / numpad right ; portrait: question top / numpad below -->
     <div class="flex flex-col landscape:flex-row landscape:items-stretch gap-3">
       <!-- Question -->
-      <div class="glass-panel px-4 py-4 flex flex-col items-center justify-center gap-3 landscape:flex-1">
+      <div class="glass-panel px-4 py-4 flex flex-col items-center justify-center gap-3 landscape:flex-1 select-none">
         <div class="flex items-center justify-center gap-2 text-3xl md:text-4xl font-black">
           <span x-text="g.currentQuestion ? g.currentQuestion.num1 : '?'"></span>
           <span class="text-[#f5c518]">+</span>
@@ -161,7 +161,7 @@ import Layout from '../layouts/Layout.astro';
       </div>
 
       <!-- Numpad -->
-      <div class="grid grid-cols-3 gap-2 landscape:w-[300px] landscape:shrink-0">
+      <div class="grid grid-cols-3 gap-2 landscape:w-[300px] landscape:shrink-0 select-none">
         <template x-for="n in [7,8,9,4,5,6,1,2,3]" :key="n">
           <button type="button" class="key-btn h-14" @click="g.pressKey(n)" x-text="n"></button>
         </template>
