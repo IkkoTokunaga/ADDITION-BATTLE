@@ -300,7 +300,7 @@ export function gameStore() {
         }
 
         if (this.audio) this.audio.playSE('correct');
-        // Light orbs gather to the teacher and advance the 必殺技 gauge.
+        // Light orbs gather to the 必殺技 gauge bar and advance it.
         this.spawnGaugeOrbs(this.specialGauge);
         // 女教師 fires a beam at the oni; damage only lands on impact.
         this.attacking = true;
@@ -492,12 +492,12 @@ export function gameStore() {
     },
 
     // ---- effects ----
-    // Spawn small light orbs scattered around the screen, gather them to the
-    // center into one larger orb, then send it flying into the 必殺技 gauge.
-    // The gauge's displayed value only advances to `targetGauge` once the orb
-    // arrives. Everything here is styled INLINE and the container uses
-    // `contain: strict` + overflow:hidden, so it can never affect page scroll
-    // and does not depend on any (possibly cached) global stylesheet.
+    // Spawn small light orbs scattered around the screen, gather them directly
+    // into the 必殺技 gauge bar. The gauge's displayed value only advances to
+    // `targetGauge` once the orbs arrive. Everything here is styled INLINE and
+    // the container uses `contain: strict` + overflow:hidden, so it can never
+    // affect page scroll and does not depend on any (possibly cached) global
+    // stylesheet.
     spawnGaugeOrbs(targetGauge) {
       if (typeof document === 'undefined' || typeof window === 'undefined') {
         this.specialGaugeDisplay = targetGauge;
@@ -521,18 +521,10 @@ export function gameStore() {
       const vh = window.innerHeight;
       const margin = 44;
 
-      // Gather toward the mascot (女教師) rather than the screen center.
-      const mascot = document.querySelector('[data-mascot]');
-      let cx;
-      let cy;
-      if (mascot) {
-        const mr = mascot.getBoundingClientRect();
-        cx = mr.left + mr.width / 2;
-        cy = mr.top + mr.height / 2;
-      } else {
-        cx = vw / 2;
-        cy = vh / 2;
-      }
+      // Gather toward the 必殺技 gauge bar.
+      const gr = gaugeEl.getBoundingClientRect();
+      const cx = gr.left + gr.width / 2;
+      const cy = gr.top + gr.height / 2;
 
       // Fresh, fully self-contained overlay. `contain: strict` guarantees its
       // contents cannot grow the document (no stray scrollbars); overflow:hidden
@@ -583,8 +575,8 @@ export function gameStore() {
         const merged = document.createElement('div');
         merged.style.cssText = mergedBase;
         layer.appendChild(merged);
-        // Orbs merge at the mascot: a gentle pop then fade. The gauge advances
-        // on completion (no orb is sent to the gauge bar).
+        // Orbs merge at the gauge bar: a gentle pop then fade. The gauge
+        // advances on completion.
         const anim = merged.animate(
           [
             { transform: `translate(${cx}px,${cy}px) translate(-50%,-50%) scale(0.4)`, opacity: 0.45 },
