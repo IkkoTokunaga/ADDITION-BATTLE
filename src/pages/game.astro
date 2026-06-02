@@ -95,13 +95,20 @@ import Layout from '../layouts/Layout.astro';
       </div>
 
       <!-- 鬼 block (top-right). Oni is rendered slightly larger than the teacher. -->
-      <div class="flex flex-col items-center gap-1.5">
-        <div class="relative flex items-end justify-center">
+      <div class="flex flex-col items-center gap-1.5 overflow-visible">
+        <div class="relative flex items-end justify-center overflow-visible">
+          <!-- Dedicated aura: sits behind the img as an independent DOM element so it
+               is never clipped by the img's CSS box or overridden by animation filters. -->
+          <div
+            class="oni-aura"
+            :style="(g.oniDefeated || !g.oniImgReady || g.explode) ? 'opacity:0' : ''"
+            aria-hidden="true"
+          ></div>
           <img
             :src="oniImages[Math.min(Math.max(g.stage,1),12)-1]"
             alt="鬼"
             data-oni
-            class="h-48 sm:h-56 w-auto object-contain drop-shadow-[0_0_24px_rgba(241,91,181,0.5)]"
+            class="h-48 sm:h-56 w-auto object-contain relative z-10"
             :class="{ 'is-shaking': g.shaking, 'is-exploding': g.explode }"
             :style="(g.oniDefeated || !g.oniImgReady) ? 'visibility:hidden' : ''"
             @load="g.oniImgReady = true"
