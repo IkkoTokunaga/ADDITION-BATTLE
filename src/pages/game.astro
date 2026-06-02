@@ -117,9 +117,7 @@ import Layout from '../layouts/Layout.astro';
           <template x-if="g.explode">
             <div class="shockwave"></div>
           </template>
-          <template x-if="g.superAttacking">
-            <div class="super-beam"></div>
-          </template>
+
           <template x-for="f in g.floatingTexts" :key="f.id">
             <div
               class="floating-damage"

@@ -723,6 +723,98 @@ export function gameStore() {
       }, 1400);
     },
 
+    // Special attack: barrage of chalk pieces fired in rapid succession.
+    // Runs during the superAttacking window (~1050ms). No onHit callback
+    // needed — damage is applied before this is called.
+    fireChalkBarrage() {
+      if (typeof document === 'undefined' || typeof window === 'undefined') return;
+      const teacher = document.querySelector('[data-mascot]');
+      const oni = document.querySelector('[data-oni]');
+      if (!teacher || !oni || typeof document.createElement('div').animate !== 'function') return;
+
+      const tr = teacher.getBoundingClientRect();
+      const or = oni.getBoundingClientRect();
+      const sx = tr.right - tr.width * 0.12;
+      const sy = tr.top + tr.height * 0.42;
+      const ex = or.left + or.width * 0.5;
+      const ey = or.top + or.height * 0.4;
+      const baseDx = ex - sx;
+      const baseDy = ey - sy;
+      const baseAngle = Math.atan2(baseDy, baseDx);
+      const baseDist = Math.hypot(baseDx, baseDy);
+
+      const layer = this._makeFxLayer();
+      const self = this;
+      let cleaned = false;
+      const cleanup = () => {
+        if (cleaned) return;
+        cleaned = true;
+        layer.remove();
+      };
+
+      const COUNT = 16;
+      const STAGGER = 52;
+      const FLIGHT = 300;
+      const SPREAD = 0.22; // radians of random spread around base angle
+
+      for (let i = 0; i < COUNT; i++) {
+        setTimeout(() => {
+          const angle = baseAngle + (Math.random() - 0.5) * SPREAD;
+          const dist = baseDist * (0.88 + Math.random() * 0.2);
+          const dx = Math.cos(angle) * dist;
+          const dy = Math.sin(angle) * dist;
+          const spinDir = Math.random() > 0.5 ? 360 : -360;
+
+          const chalk = document.createElement('div');
+          chalk.style.cssText =
+            `position:absolute;left:${sx}px;top:${sy}px;width:22px;height:7px;border-radius:3px;` +
+            'background:linear-gradient(135deg,#f0ede8 0%,#ffffff 45%,#e8e4df 100%);' +
+            'box-shadow:0 1px 4px rgba(0,0,0,0.22),inset 0 1px 0 rgba(255,255,255,0.75);' +
+            'transform-origin:50% 50%;will-change:transform,opacity;';
+          layer.appendChild(chalk);
+          chalk.animate(
+            [
+              { transform: `translate(-50%,-50%) translate(0px,0px) rotate(0deg)`, opacity: 1 },
+              { transform: `translate(-50%,-50%) translate(${dx}px,${dy}px) rotate(${spinDir}deg)`, opacity: 1 },
+            ],
+            { duration: FLIGHT, easing: 'linear', fill: 'forwards' }
+          );
+
+          // Dust cloud on impact.
+          setTimeout(() => {
+            const isLast = i >= COUNT - 3;
+            const dustCount = isLast ? 10 : 5;
+            const hitX = sx + dx;
+            const hitY = sy + dy;
+            if (isLast && self.audio) self.audio.playSE('chalk_hit');
+            for (let j = 0; j < dustCount; j++) {
+              const dust = document.createElement('div');
+              const ang = (j / dustCount) * Math.PI * 2;
+              const speed = (isLast ? 38 : 22) + Math.random() * 28;
+              const size = 4 + Math.round(Math.random() * (isLast ? 8 : 4));
+              dust.style.cssText =
+                `position:absolute;left:${hitX}px;top:${hitY}px;` +
+                `width:${size}px;height:${size}px;border-radius:9999px;` +
+                'background:rgba(255,255,255,0.88);' +
+                'filter:blur(1px);will-change:transform,opacity;';
+              layer.appendChild(dust);
+              dust.animate(
+                [
+                  { transform: `translate(-50%,-50%) translate(0px,0px) scale(1)`, opacity: 0.9 },
+                  { transform: `translate(-50%,-50%) translate(${Math.cos(ang) * speed}px,${Math.sin(ang) * speed}px) scale(0.2)`, opacity: 0 },
+                ],
+                { duration: 340, easing: 'ease-out', fill: 'forwards' }
+              );
+            }
+            if (i === COUNT - 1) setTimeout(cleanup, 500);
+          }, FLIGHT);
+        }, i * STAGGER);
+      }
+
+      // Safety net.
+      setTimeout(cleanup, COUNT * STAGGER + FLIGHT + 700);
+    },
+
     // Wrong answer: 鬼 hurls a toxic ball at 女教師. `onHit` runs when the ball
     // lands on the teacher (removes a life + resolves the turn).
     fireToxicBall(onHit) {
@@ -923,8 +1015,8 @@ export function gameStore() {
         this.superAttacking = true;
         // Gauge empties as the 必殺技 fires.
         this.specialGaugeDisplay = 0;
-        // ✕ effect (super-beam) appears now: dedicated 必殺技 sound only.
         if (this.audio) this.audio.playSE('special');
+        this.fireChalkBarrage();
         const id = ++this._floatId;
         this.floatingTexts.push({ id, value: dmg, special: true });
         setTimeout(() => {

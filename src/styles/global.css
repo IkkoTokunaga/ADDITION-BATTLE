@@ -299,56 +299,6 @@ body {
 
 /* Horizontal energy beam across the oni */
 /* 必殺技: two diagonal slashes that grow out from the center to form an ✕. */
-.super-beam {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 0;
-  height: 0;
-  transform: translate(-50%, -50%);
-  z-index: 20;
-  pointer-events: none;
-}
-.super-beam::before,
-.super-beam::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 340px;
-  height: 30px;
-  margin: -15px 0 0 -170px;
-  /* Tapered blade: sharp points at both tips, thickest at the center. */
-  clip-path: polygon(0% 50%, 50% 0%, 100% 50%, 50% 100%);
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(0, 245, 212, 0.9) 18%,
-    #fff 50%,
-    rgba(241, 91, 181, 0.9) 82%,
-    transparent
-  );
-  filter: blur(1px) brightness(1.5);
-  box-shadow: 0 0 45px rgba(0, 245, 212, 0.9);
-}
-.super-beam::before {
-  animation: superSlashA 0.85s ease-out forwards;
-}
-.super-beam::after {
-  animation: superSlashB 0.85s ease-out 0.14s forwards;
-}
-@keyframes superSlashA {
-  0% { opacity: 0; transform: rotate(45deg) scaleX(0); }
-  16% { opacity: 1; transform: rotate(45deg) scaleX(1.08); }
-  45% { opacity: 1; transform: rotate(45deg) scaleX(1); }
-  100% { opacity: 0; transform: rotate(45deg) scaleX(1); }
-}
-@keyframes superSlashB {
-  0% { opacity: 0; transform: rotate(-45deg) scaleX(0); }
-  16% { opacity: 1; transform: rotate(-45deg) scaleX(1.08); }
-  45% { opacity: 1; transform: rotate(-45deg) scaleX(1); }
-  100% { opacity: 0; transform: rotate(-45deg) scaleX(1); }
-}
 
 /* ===== Slash cut-in ===== */
 .cutin {
