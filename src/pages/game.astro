@@ -189,7 +189,7 @@ import Layout from '../layouts/Layout.astro';
             <div class="flex justify-between"><span class="text-[#9db8a8]">撃破ボーナス</span><span class="font-bold text-[#fee440]" x-text="'+' + g.lastDefeatBonus.toLocaleString()"></span></div>
             <div class="mt-1 border-t border-[#1f7a4d]/30 pt-1 flex justify-between"><span class="text-[#9db8a8]">合計スコア</span><span class="font-black text-lg text-[#eaf5ee]" x-text="g.score.toLocaleString()"></span></div>
           </div>
-          <button type="button" class="w-full btn-primary font-black py-3 text-lg" @click="g.proceedToNextStage()">次のステージへ！</button>
+          <button type="button" class="w-full btn-primary font-black py-3 text-lg" :disabled="g.navigating" @click="g.proceedToNextStage()">次のステージへ！</button>
         </div>
       </div>
     </template>
@@ -232,8 +232,8 @@ import Layout from '../layouts/Layout.astro';
           </div>
 
           <div class="w-full flex flex-col gap-2">
-            <button type="button" class="w-full btn-ghost font-bold py-2.5" @click="g.goRanking()">ランキングを見る</button>
-            <button type="button" class="w-full btn-ghost font-bold py-2.5" @click="g.playAgain()">もう一度あそぶ</button>
+            <button type="button" class="w-full btn-ghost font-bold py-2.5" :disabled="g.navigating" @click="g.goRanking()">ランキングを見る</button>
+            <button type="button" class="w-full btn-ghost font-bold py-2.5" :disabled="g.navigating" @click="g.playAgain()">もう一度あそぶ</button>
           </div>
         </div>
       </div>
@@ -277,8 +277,8 @@ import Layout from '../layouts/Layout.astro';
           </div>
 
           <div class="w-full flex flex-col gap-2">
-            <button type="button" class="w-full btn-ghost font-bold py-2.5" @click="g.goRanking()">ランキングを見る</button>
-            <button type="button" class="w-full btn-ghost font-bold py-2.5" @click="g.playAgain()">もう一度あそぶ</button>
+            <button type="button" class="w-full btn-ghost font-bold py-2.5" :disabled="g.navigating" @click="g.goRanking()">ランキングを見る</button>
+            <button type="button" class="w-full btn-ghost font-bold py-2.5" :disabled="g.navigating" @click="g.playAgain()">もう一度あそぶ</button>
           </div>
         </div>
       </div>

@@ -5,10 +5,13 @@ import Layout from '../layouts/Layout.astro';
 <Layout title="スタート" description="鬼と学ぼう！算数アドベンチャー — おにの学校で楽しく算数を学ぼう！">
   <div
     x-data="{
+      navigating: false,
       init() {
         this.$store.game.goBackToTitle();
       },
       async start() {
+        if (this.navigating) return;
+        this.navigating = true;
         await this.$store.game.startNewGame();
         if (typeof window !== 'undefined' && window.astroNavigate) {
           window.astroNavigate('/game');
@@ -37,6 +40,7 @@ import Layout from '../layouts/Layout.astro';
         <button
           type="button"
           @click="start()"
+          :disabled="navigating"
           class="btn-primary btn-shine font-black px-10 sm:px-14 py-3 sm:py-4 text-lg sm:text-2xl tracking-wider"
         >
           修行を開始する！

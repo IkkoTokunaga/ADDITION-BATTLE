@@ -19,6 +19,9 @@ export function gameStore() {
     // session). Empty -> a player_id-derived guest name is used on the server.
     nickname: '',
 
+    // navigation guard
+    navigating: false,
+
     // ranking submission flow
     submitting: false,
     submitted: false,
@@ -427,6 +430,8 @@ export function gameStore() {
     },
 
     async proceedToNextStage() {
+      if (this.navigating) return;
+      this.navigating = true;
       this.stageCleared = false;
       if (this.audio) this.audio.playSE('stage_intro');
       await this.loadStage(this.stage + 1, this.carryToken);
@@ -490,10 +495,14 @@ export function gameStore() {
     },
 
     playAgain() {
+      if (this.navigating) return;
+      this.navigating = true;
       this.goBackToTitle();
       navigate('/');
     },
     goRanking() {
+      if (this.navigating) return;
+      this.navigating = true;
       navigate(this.savedScoreId ? `/ranking?r=${this.savedScoreId}` : '/ranking');
     },
 
