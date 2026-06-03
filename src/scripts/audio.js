@@ -145,7 +145,7 @@ class AudioManager {
     }
     el.loop = true;
     el.muted = this.muted;
-    el.volume = this.muted ? 0 : 0.45;
+    el.volume = this.muted ? 0 : 0.2;
     if (this._unlocked) {
       el.play().catch(() => {});
     }
@@ -179,7 +179,7 @@ class AudioManager {
     const el = this.bgmEl;
     if (el) {
       el.muted = muted;
-      el.volume = muted ? 0 : 0.45;
+      el.volume = muted ? 0 : 0.2;
     }
   }
 
