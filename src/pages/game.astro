@@ -30,7 +30,7 @@ import Layout from '../layouts/Layout.astro';
         }
       }
     }"
-    class="relative w-full max-w-md landscape:max-w-3xl mx-auto flex flex-col gap-3 overflow-visible"
+    class="relative w-full max-w-md landscape:max-w-3xl mx-auto flex flex-col gap-3 overflow-visible [overflow-x:clip]"
   >
     <!-- ===== Battlefield (top) ===== -->
     <!-- Images are placed free-standing, NOT inside any framed panel. -->
@@ -85,7 +85,7 @@ import Layout from '../layouts/Layout.astro';
       </div>
 
       <!-- Score / Stage (center, between teacher and oni) -->
-      <div class="flex flex-col items-center gap-0.5 pb-6 sm:pb-10">
+      <div class="flex flex-col items-center gap-0.5 pb-6 sm:pb-10 relative z-10">
         <span class="text-[9px] uppercase tracking-wider text-[#9db8a8]">Stage</span>
         <span class="text-sm font-black text-[#fee440] glow-text-cyan leading-none">
           <span x-text="g.stage"></span><span class="text-[#9db8a8]/60 text-[10px]"> / 12</span>
@@ -99,8 +99,8 @@ import Layout from '../layouts/Layout.astro';
       </div>
 
       <!-- 鬼 block (top-right). Oni is rendered slightly larger than the teacher. -->
-      <div class="flex flex-col items-center gap-1.5 overflow-visible">
-        <div class="relative flex items-end justify-center overflow-visible">
+      <div class="flex flex-col items-center gap-1.5 overflow-visible min-w-0">
+        <div class="relative flex items-end overflow-visible" :class="g.stage === 12 ? 'justify-end' : 'justify-center'">
           <!-- Dedicated aura: sits behind the img as an independent DOM element so it
                is never clipped by the img's CSS box or overridden by animation filters. -->
           <div
@@ -114,7 +114,7 @@ import Layout from '../layouts/Layout.astro';
             data-oni
             class="h-48 sm:h-56 w-auto object-contain relative"
             :class="{ 'is-shaking': g.shaking, 'is-exploding': g.explode }"
-            :style="(g.oniDefeated || !g.oniImgReady) ? 'visibility:hidden' : ''"
+            :style="(g.oniDefeated || !g.oniImgReady ? 'visibility:hidden;' : '') + (g.stage === 12 ? 'height:16rem;width:25.6rem;flex-shrink:0' : '')"
             @load="g.oniImgReady = true"
             @error="g.oniImgReady = true"
           />

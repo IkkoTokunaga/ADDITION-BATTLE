@@ -107,6 +107,18 @@ export function gameStore() {
       if (typeof sessionStorage !== 'undefined') {
         this.nickname = sessionStorage.getItem('nickname') || '';
       }
+      // Dev: ?dev_stage=N でそのステージから直接開始
+      if (typeof window !== 'undefined') {
+        const devStage = new URLSearchParams(window.location.search).get('dev_stage');
+        if (devStage) {
+          const n = parseInt(devStage, 10);
+          if (Number.isFinite(n) && n >= 1) {
+            // game.astro の x-data init() がリダイレクト判定する前に started を立てる
+            this.started = true;
+            setTimeout(() => this.startNewGame(n), 0);
+          }
+        }
+      }
     },
 
     // Display name shown/used when the player registers without typing one.
@@ -180,14 +192,14 @@ export function gameStore() {
       if (this.audio) this.audio.playBGM('home');
     },
 
-    async startNewGame() {
+    async startNewGame(stage = 1) {
       if (this.audio) this.audio.unlock();
       this.started = true;
       this.score = 0;
       this.gameOver = false;
       this.gameCompleted = false;
       this.carryToken = null;
-      await this.loadStage(1, null);
+      await this.loadStage(stage, null);
     },
 
     async loadStage(stage, carryToken) {
