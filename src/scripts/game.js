@@ -331,14 +331,21 @@ export function gameStore() {
         });
       } else {
         if (this.audio) this.audio.playSE('incorrect');
-        // 鬼 hurls a toxic ball at the teacher; a life is lost only on impact.
         this.attacking = true;
-        this.fireToxicBall(() => {
-          this.attacking = false;
-          this.lives -= 1;
-          this.takeDamageEffect();
-          this.resolveAfterAttack();
-        });
+        const self = this;
+        const onHit = () => {
+          self.attacking = false;
+          self.lives -= 1;
+          self.takeDamageEffect();
+          self.resolveAfterAttack();
+        };
+        if (this.stage === 12) {
+          // ステージ12ボスは女教師切り付け演出（2回斬り）
+          this.fireSlash(onHit);
+        } else {
+          // 鬼 hurls a toxic ball at the teacher; a life is lost only on impact.
+          this.fireToxicBall(onHit);
+        }
       }
     },
 
@@ -1207,6 +1214,62 @@ export function gameStore() {
         setTimeout(resolve, 5000);
       }, 1300);
     },
+    // Stage 12 boss counter-attack: two rapid slash marks across the teacher.
+    // `onHit` is called after both slashes land (life is deducted then).
+    fireSlash(onHit) {
+      if (typeof document === 'undefined' || typeof window === 'undefined') {
+        onHit();
+        return;
+      }
+      const teacher = document.querySelector('[data-mascot]');
+      if (!teacher || typeof document.createElement('div').animate !== 'function') {
+        onHit();
+        return;
+      }
+
+      const tr = teacher.getBoundingClientRect();
+      const cx = tr.left + tr.width * 0.5;
+      const cy = tr.top + tr.height * 0.42;
+      const W = window.innerWidth * 0.9;
+      const layer = this._makeFxLayer();
+      const self = this;
+      let cleaned = false;
+      const cleanup = () => {
+        if (!cleaned) { cleaned = true; layer.remove(); }
+      };
+
+      const spawnSlash = (yOff, angle, playSound = false) => {
+        if (playSound && self.audio) self.audio.playSE('slash');
+        const el = document.createElement('div');
+        el.style.cssText =
+          `position:absolute;left:${cx}px;top:${cy + yOff}px;width:${W}px;height:24px;` +
+          'clip-path:polygon(0 50%,0.3% 0%,99.7% 0%,100% 50%,99.7% 100%,0.3% 100%);' +
+          'background:linear-gradient(90deg,rgba(255,200,200,.85) 0%,rgba(255,255,255,1) 20%,rgba(255,80,80,1) 50%,rgba(255,255,255,1) 80%,rgba(255,200,200,.85) 100%);' +
+          'box-shadow:0 0 22px 6px rgba(255,60,60,1),0 0 50px 12px rgba(255,160,160,.7);' +
+          'will-change:transform,opacity;';
+        layer.appendChild(el);
+        el.animate(
+          [
+            { transform: `translate(-50%,-50%) rotate(${angle}deg) scaleX(0.02)`, opacity: 1 },
+            { transform: `translate(-50%,-50%) rotate(${angle}deg) scaleX(1)`, opacity: 1, offset: 0.22 },
+            { transform: `translate(-50%,-50%) rotate(${angle}deg) scaleX(1.02)`, opacity: 0 },
+          ],
+          { duration: 360, easing: 'ease-out', fill: 'forwards' }
+        );
+      };
+
+      // 1振り目（効果音あり）
+      spawnSlash(-tr.height * 0.18, -42, true);
+      // 2振り目（効果音なし）
+      setTimeout(() => {
+        spawnSlash(tr.height * 0.12, 38);
+        setTimeout(() => {
+          cleanup();
+          onHit();
+        }, 380);
+      }, 260);
+    },
+
     takeDamageEffect() {
       this.takingDamage = true;
       this.brokenHeart = this.lives; // index that just emptied (0-based)

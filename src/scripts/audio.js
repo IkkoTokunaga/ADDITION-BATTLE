@@ -13,6 +13,7 @@ const SE_FILES = {
   chalk_hit: 'チョーク攻撃',
   explosion: '爆発',
   charge: '光玉溜め',
+  slash: '切り付け',
   special: '必殺技',
   special_cutin: '必殺技カットイン',
   growl1: '鬼鳴き声1',
