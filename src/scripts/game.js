@@ -107,8 +107,8 @@ export function gameStore() {
       if (typeof sessionStorage !== 'undefined') {
         this.nickname = sessionStorage.getItem('nickname') || '';
       }
-      // Dev: ?dev_stage=N でそのステージから直接開始
-      if (typeof window !== 'undefined') {
+      // Dev only: ?dev_stage=N でそのステージから直接開始（開発環境限定）
+      if (import.meta.env.DEV && typeof window !== 'undefined') {
         const devStage = new URLSearchParams(window.location.search).get('dev_stage');
         if (devStage) {
           const n = parseInt(devStage, 10);
