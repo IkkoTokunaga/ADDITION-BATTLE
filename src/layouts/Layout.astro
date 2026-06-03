@@ -50,7 +50,7 @@ const canonicalUrl = new URL(Astro.url.pathname, siteUrl).href;
     <title>{ogTitle}</title>
     <ClientRouter />
   </head>
-  <body class="min-h-screen flex flex-col">
+  <body class="min-h-screen flex flex-col [overflow-x:clip]">
     <!-- Persistent BGM element (survives page transitions) -->
     <audio id="bgm-audio" data-astro-transition-persist="bgm" preload="auto"></audio>
 
