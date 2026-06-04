@@ -24,11 +24,11 @@ if (targetId !== null) {
   try {
     const result = await query(
       `WITH ranked AS (
-         SELECT id, username, score, stage,
+         SELECT id, username, score, stage, created_at,
                 ROW_NUMBER() OVER (ORDER BY score DESC, stage DESC, created_at ASC) AS rn
          FROM scores
        )
-       SELECT id, username, score, stage, rn FROM ranked
+       SELECT id, username, score, stage, created_at, rn FROM ranked
        WHERE rn BETWEEN
          (SELECT rn FROM ranked WHERE id = $1) - 3
          AND (SELECT rn FROM ranked WHERE id = $1) + 3
@@ -45,6 +45,18 @@ if (targetId !== null) {
 }
 
 const medals = ['🥇', '🥈', '🥉'];
+
+function formatDate(d: Date | string | null): string {
+  if (!d) return '';
+  return new Date(d).toLocaleString('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
 ---
 
 <Layout title="ランキング" description="鬼と学ぼう！算数アドベンチャーのハイスコアランキング">
@@ -89,10 +101,11 @@ const medals = ['🥇', '🥈', '🥉'];
                       {s.username}
                       {isMe && <span class="ml-1 text-[10px] font-black text-[#04140d] bg-[#3ddc84] rounded-full px-1.5 py-0.5">YOU</span>}
                     </div>
-                    <div class="text-[10px] text-[#9db8a8]">ステージ {s.stage} 到達</div>
+                    <div class="text-[11px] text-[#9db8a8]">ステージ {s.stage} 到達</div>
                   </div>
-                  <div class="text-right font-black text-[#3ddc84]">
-                    {Number(s.score).toLocaleString()}
+                  <div class="text-right shrink-0">
+                    <div class="font-black text-[#3ddc84]">{Number(s.score).toLocaleString()}</div>
+                    <div class="text-[10px] text-[#9db8a8]/70">{formatDate(s.created_at)}</div>
                   </div>
                 </div>
               );
@@ -122,10 +135,11 @@ const medals = ['🥇', '🥈', '🥉'];
               </div>
               <div class="flex-1 min-w-0">
                 <div class="truncate font-bold text-[#eaf5ee]">{s.username}</div>
-                <div class="text-[10px] text-[#9db8a8]">ステージ {s.stage} 到達</div>
+                <div class="text-[11px] text-[#9db8a8]">ステージ {s.stage} 到達</div>
               </div>
-              <div class="text-right font-black text-[#3ddc84]">
-                {Number(s.score).toLocaleString()}
+              <div class="text-right shrink-0">
+                <div class="font-black text-[#3ddc84]">{Number(s.score).toLocaleString()}</div>
+                <div class="text-[10px] text-[#9db8a8]/70">{formatDate(s.created_at)}</div>
               </div>
             </div>
           ))
