@@ -5,8 +5,8 @@ WORKDIR /app
 # Install development dependencies
 RUN apk add --no-cache libc6-compat bash git
 
-# Install Claude Code CLI globally (as root)
-RUN npm install -g @anthropic-ai/claude-code
+# Install Claude Code CLI and OpenSpec globally (as root)
+RUN npm install -g @anthropic-ai/claude-code @fission-ai/openspec
 
 # Switch to non-root node user (UID=1000, matches host user)
 RUN chown -R node:node /app
