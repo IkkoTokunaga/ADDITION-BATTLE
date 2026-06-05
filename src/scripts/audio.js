@@ -51,7 +51,9 @@ class AudioManager {
     this.seGain = null;
     this.buffers = new Map();
     this.currentBgmKey = null;
-    this.muted = false;
+    // Restore the persisted mute preference so the choice sticks across pages.
+    this.muted =
+      typeof localStorage !== 'undefined' && localStorage.getItem('sound_muted') === '1';
     this.preloaded = false;
     this._unlocked = false;
     this._bgmPausedByVisibility = false;
@@ -76,6 +78,11 @@ class AudioManager {
   get bgmEl() {
     if (typeof document === 'undefined') return null;
     return document.getElementById('bgm-audio');
+  }
+
+  // True once a user gesture has unlocked audio in this session.
+  get unlocked() {
+    return this._unlocked;
   }
 
   // Must be called from a user gesture to satisfy autoplay policies.
@@ -176,6 +183,9 @@ class AudioManager {
 
   setMuted(muted) {
     this.muted = muted;
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('sound_muted', muted ? '1' : '0');
+    }
     if (this.seGain) this.seGain.gain.value = muted ? 0 : 0.9;
     const el = this.bgmEl;
     if (el) {
