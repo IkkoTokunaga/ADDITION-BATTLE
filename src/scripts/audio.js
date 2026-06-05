@@ -80,6 +80,11 @@ class AudioManager {
     return document.getElementById('bgm-audio');
   }
 
+  // True once a user gesture has unlocked audio in this session.
+  get unlocked() {
+    return this._unlocked;
+  }
+
   // Must be called from a user gesture to satisfy autoplay policies.
   unlock() {
     if (typeof window === 'undefined') return;
