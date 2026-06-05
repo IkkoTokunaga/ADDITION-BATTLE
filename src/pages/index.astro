@@ -8,7 +8,7 @@ import Layout from '../layouts/Layout.astro';
       navigating: false,
       init() {
         this.$store.game.goBackToTitle();
-        // A案: 自動再生はブラウザが禁止するため、最初のユーザー操作
+        // 自動再生はブラウザが禁止するため、最初のユーザー操作
         // （タップ/クリック/キー）でアンロックしてホームBGMを鳴らす。
         const audio = this.$store.game.audio;
         if (audio && typeof window !== 'undefined') {
