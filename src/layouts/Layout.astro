@@ -72,7 +72,7 @@ const canonicalUrl = new URL(Astro.url.pathname, siteUrl).href;
             type="button"
             title="サウンド切替"
             class="btn-ghost px-3 py-1.5 text-xs font-bold"
-            x-data="{ muted: false }"
+            x-data="{ muted: typeof localStorage !== 'undefined' && localStorage.getItem('sound_muted') === '1' }"
             @click="muted = $store.game.audio ? $store.game.audio.toggleMute() : muted"
             x-text="muted ? '🔇' : '🔊'"
           >🔊</button>
