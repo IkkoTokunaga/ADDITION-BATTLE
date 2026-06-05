@@ -586,10 +586,18 @@ export function gameStore() {
       this.goBackToTitle();
       navigate('/');
     },
+    // Where the ranking link points. With a saved result, `?r=<id>` lets the
+    // ranking page derive the board from that score's own mode; otherwise we
+    // pass the current mode so the right board is shown.
+    get rankingPath() {
+      return this.savedScoreId
+        ? `/ranking?r=${this.savedScoreId}`
+        : `/ranking?mode=${this.mode}`;
+    },
     goRanking() {
       if (this.navigating) return;
       this.navigating = true;
-      navigate(this.savedScoreId ? `/ranking?r=${this.savedScoreId}` : '/ranking');
+      navigate(this.rankingPath);
     },
 
     // ---- effects ----

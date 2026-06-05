@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-// @ts-expect-error — game.js is plain JS with no type declarations
 import { gameStore } from './game.js';
 
 // The store mirrors the server-authoritative mode. These tests exercise the
@@ -62,6 +61,19 @@ describe('gameStore mode threading (task 6.2)', () => {
     store.mode = 'blank';
     store.goBackToTitle();
     expect(store.mode).toBe('normal');
+  });
+
+  it('rankingPath uses ?r when a result was saved (board derived server-side)', () => {
+    const store = freshStore();
+    store.savedScoreId = 42;
+    expect(store.rankingPath).toBe('/ranking?r=42');
+  });
+
+  it('rankingPath passes the current mode when no result was saved', () => {
+    const store = freshStore();
+    store.savedScoreId = null;
+    store.mode = 'blank';
+    expect(store.rankingPath).toBe('/ranking?mode=blank');
   });
 });
 
