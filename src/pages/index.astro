@@ -27,11 +27,17 @@ import Layout from '../layouts/Layout.astro';
       async start(mode = 'normal') {
         if (this.navigating) return;
         this.navigating = true;
-        await this.$store.game.startNewGame(1, mode);
-        if (typeof window !== 'undefined' && window.astroNavigate) {
-          window.astroNavigate('/game');
-        } else {
-          window.location.href = '/game';
+        try {
+          await this.$store.game.startNewGame(1, mode);
+          if (typeof window !== 'undefined' && window.astroNavigate) {
+            window.astroNavigate('/game');
+          } else {
+            window.location.href = '/game';
+          }
+        } catch (e) {
+          // 開始に失敗したらボタンを再び押せるよう復帰させる（永久disabled防止）
+          this.navigating = false;
+          console.error('failed to start game', e);
         }
       }
     }"
