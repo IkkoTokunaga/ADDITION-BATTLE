@@ -32,6 +32,10 @@ export function gameStore() {
     // run state
     started: false,
     stage: 1,
+    // Game mode for this run: 'normal' (answer the sum) or 'blank' (虫食い算 —
+    // answer the hidden addend). The server is the source of truth (it lives in
+    // the session token); this mirrors it for display/answer logic.
+    mode: 'normal',
     score: 0,
     lives: 3,
 
@@ -146,6 +150,53 @@ export function gameStore() {
       );
     },
 
+    // ---- question display (mode-aware) ----
+    // The public payload differs by mode:
+    //   normal     -> { num1, num2 }
+    //   blank (□=1) -> { num2, sum, blank:1 }   (first addend hidden)
+    //   blank (□=2) -> { num1, sum, blank:2 }   (second addend hidden)
+    // These getters only ever read VISIBLE fields, so the hidden answer is
+    // never rendered to the DOM.
+    get qBlank() {
+      const q = this.currentQuestion;
+      return q && q.blank ? q.blank : 0;
+    },
+    get qLeft() {
+      const q = this.currentQuestion;
+      if (!q) return '?';
+      return this.qBlank === 1 ? '□' : q.num1;
+    },
+    get qRight() {
+      const q = this.currentQuestion;
+      if (!q) return '?';
+      return this.qBlank === 2 ? '□' : q.num2;
+    },
+    // The sum is shown after "=" only in blank mode; in normal mode the answer
+    // box below the equation is where the result goes.
+    get qShowSum() {
+      return this.qBlank > 0;
+    },
+    get qSum() {
+      const q = this.currentQuestion;
+      return q ? q.sum : '';
+    },
+
+    // Reconstruct the full (num1, num2, blank, expected-answer) of the current
+    // question from its visible fields. In blank mode the hidden addend is
+    // recovered as sum - visible. `expected` is what the player must type.
+    resolveQuestion(q) {
+      const blank = q && q.blank ? q.blank : 0;
+      if (blank === 1) {
+        const num1 = q.sum - q.num2; // hidden first addend
+        return { num1, num2: q.num2, blank, expected: num1 };
+      }
+      if (blank === 2) {
+        const num2 = q.sum - q.num1; // hidden second addend
+        return { num1: q.num1, num2, blank, expected: num2 };
+      }
+      return { num1: q.num1, num2: q.num2, blank: 0, expected: q.num1 + q.num2 };
+    },
+
     async api(path, body) {
       const res = await fetch(path, {
         method: 'POST',
@@ -165,6 +216,7 @@ export function gameStore() {
       this.gameCompleted = false;
       this.stageCleared = false;
       this.loading = false;
+      this.mode = 'normal';
       this.questionQueue = [];
       this.questionIndex = 0;
       this.currentQuestion = null;
@@ -192,13 +244,14 @@ export function gameStore() {
       if (this.audio) this.audio.playBGM('home');
     },
 
-    async startNewGame(stage = 1) {
+    async startNewGame(stage = 1, mode = 'normal') {
       if (this.audio) this.audio.unlock();
       this.started = true;
       this.score = 0;
       this.gameOver = false;
       this.gameCompleted = false;
       this.carryToken = null;
+      this.mode = mode === 'blank' ? 'blank' : 'normal';
       await this.loadStage(stage, null);
     },
 
@@ -210,7 +263,11 @@ export function gameStore() {
         const data = await this.api('/api/stages/start', {
           stage,
           carry_token: carryToken,
+          mode: this.mode,
         });
+        // Server is the source of truth: on a next-stage load the mode comes
+        // from the carry token, so sync our mirror to whatever it returns.
+        if (data && data.mode) this.mode = data.mode;
         // Keep the oni hidden until its NEW image actually loads (the <img>
         // @load handler flips oniImgReady), so the previous (defeated) oni's
         // stale frame never flashes during the swap.
@@ -279,11 +336,15 @@ export function gameStore() {
       const now =
         typeof performance !== 'undefined' ? performance.now() : Date.now();
       const t = (now - this.questionStartTime) / 1000;
-      const correct = userAnsVal === q.num1 + q.num2;
+      // Mode-aware: in blank mode the expected answer is the hidden addend, and
+      // the real (num1,num2) are reconstructed so the server's pool key matches.
+      const r = this.resolveQuestion(q);
+      const correct = userAnsVal === r.expected;
 
       this.answersLog.push({
-        num1: q.num1,
-        num2: q.num2,
+        num1: r.num1,
+        num2: r.num2,
+        blank: r.blank,
         user_answer: Number.isFinite(userAnsVal) ? userAnsVal : -1,
         is_correct: correct,
         time_taken: t,
@@ -294,8 +355,9 @@ export function gameStore() {
         const timeBonus = t < 10 ? ((10 - t) * this.stage) / 10 : 0;
         let dmg = Math.round(base + timeBonus);
 
-        // Deterministic gauge gain (10-25%). Must match the server.
-        this.specialGauge += 10 + ((q.num1 + q.num2) % 16);
+        // Deterministic gauge gain (10-25%). num1+num2 === sum in both modes, so
+        // this matches the server regardless of mode.
+        this.specialGauge += 10 + ((r.num1 + r.num2) % 16);
         const isSpecial = this.specialGauge >= 100;
         if (isSpecial) {
           dmg *= SPECIAL_MULT;

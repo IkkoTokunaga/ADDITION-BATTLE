@@ -9,10 +9,10 @@ import Layout from '../layouts/Layout.astro';
       init() {
         this.$store.game.goBackToTitle();
       },
-      async start() {
+      async start(mode = 'normal') {
         if (this.navigating) return;
         this.navigating = true;
-        await this.$store.game.startNewGame();
+        await this.$store.game.startNewGame(1, mode);
         if (typeof window !== 'undefined' && window.astroNavigate) {
           window.astroNavigate('/game');
         } else {
@@ -35,15 +35,23 @@ import Layout from '../layouts/Layout.astro';
         />
       </picture>
 
-      <!-- Overlaid CTA -->
-      <div class="absolute inset-x-0 bottom-0 flex justify-center pb-[28%] md:pb-[10%]">
+      <!-- Overlaid CTA: choose a mode to start -->
+      <div class="absolute inset-x-0 bottom-0 flex flex-col items-center gap-2.5 sm:gap-3 pb-[20%] md:pb-[7%]">
         <button
           type="button"
-          @click="start()"
+          @click="start('normal')"
           :disabled="navigating"
           class="btn-primary btn-shine font-black px-10 sm:px-14 py-3 sm:py-4 text-lg sm:text-2xl tracking-wider"
         >
-          修行を開始する！
+          通常モードで開始！
+        </button>
+        <button
+          type="button"
+          @click="start('blank')"
+          :disabled="navigating"
+          class="btn-primary btn-shine font-black px-10 sm:px-14 py-2.5 sm:py-3.5 text-base sm:text-xl tracking-wider"
+        >
+          虫食いモードで開始！
         </button>
       </div>
     </div>
@@ -58,6 +66,9 @@ import Layout from '../layouts/Layout.astro';
       <p class="font-bold text-[#f5c518] mb-1">【ゲームのルール】</p>
       <p>
         足し算の答えをテンキーかキーボードで入力しよう。正解すると鬼にダメージ（速く答えるほど高得点！）、間違えると女教師のライフが1つ減少します。ライフ3個を守りながら鬼を倒そう！
+      </p>
+      <p class="mt-2">
+        <span class="font-bold text-[#f5c518]">虫食いモード</span>では <span class="font-mono">□ + 3 = 8</span> のように式の一部が <span class="font-mono">□</span> で隠れます。隠れた数（この例なら <span class="font-bold">5</span>）を答えよう！
       </p>
     </div>
   </div>

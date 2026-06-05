@@ -147,10 +147,17 @@ import Layout from '../layouts/Layout.astro';
       <!-- Question -->
       <div class="glass-panel px-4 py-4 flex flex-col items-center justify-center gap-3 landscape:flex-1 select-none">
         <div class="flex items-center justify-center gap-2 text-3xl md:text-4xl font-black">
-          <span x-text="g.currentQuestion ? g.currentQuestion.num1 : '?'"></span>
+          <span
+            :class="g.qLeft === '□' ? 'text-[#fee440] glow-text-cyan' : ''"
+            x-text="g.qLeft"
+          ></span>
           <span class="text-[#f5c518]">+</span>
-          <span x-text="g.currentQuestion ? g.currentQuestion.num2 : '?'"></span>
+          <span
+            :class="g.qRight === '□' ? 'text-[#fee440] glow-text-cyan' : ''"
+            x-text="g.qRight"
+          ></span>
           <span class="text-[#f5c518]">=</span>
+          <span x-show="g.qShowSum" x-text="g.qSum"></span>
         </div>
         <div
           class="min-h-[56px] w-full max-w-[240px] flex items-center justify-center rounded-12 border-2 px-4 py-2 text-3xl font-black tracking-widest transition-colors"
