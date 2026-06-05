@@ -5,12 +5,16 @@ CREATE TABLE IF NOT EXISTS scores (
     username VARCHAR(50) NOT NULL,
     score INTEGER NOT NULL,
     stage INTEGER NOT NULL,
+    mode VARCHAR(16) NOT NULL DEFAULT 'normal',
     result_hash VARCHAR(64) UNIQUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Migration for existing deployments: add the dedup key column if missing.
 ALTER TABLE scores ADD COLUMN IF NOT EXISTS result_hash VARCHAR(64);
+-- Migration for existing deployments: add the game-mode column. Rows recorded
+-- before blank mode shipped default to 'normal'.
+ALTER TABLE scores ADD COLUMN IF NOT EXISTS mode VARCHAR(16) NOT NULL DEFAULT 'normal';
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -32,5 +36,7 @@ CREATE TABLE IF NOT EXISTS question_logs (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Index for ranking queries (by score desc, stage desc)
-CREATE INDEX IF NOT EXISTS idx_scores_ranking ON scores (score DESC, stage DESC);
+-- Index for ranking queries, partitioned by mode (separate normal/blank boards).
+-- Drop the pre-blank-mode index so existing deployments pick up the new shape.
+DROP INDEX IF EXISTS idx_scores_ranking;
+CREATE INDEX IF NOT EXISTS idx_scores_ranking ON scores (mode, score DESC, stage DESC);
