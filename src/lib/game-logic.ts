@@ -146,6 +146,7 @@ export type VerifiedLog = {
 
 export type VerifyResult = {
   verified: boolean;
+  mode: GameMode;
   stage: number;
   oniMaxHp: number;
   stageScore: number;
@@ -168,6 +169,7 @@ export function verifyAndScore(
   isGameOver: boolean
 ): VerifyResult {
   const stage = token.stage;
+  const mode = normalizeMode(token.mode);
   const oniMaxHp = stage * ONI_HP_PER_STAGE;
 
   // Build a multiset of generated (num1,num2,□position) triples. Including the
@@ -242,11 +244,13 @@ export function verifyAndScore(
     carryToken = encrypt({
       carriedScore: finalCumulative,
       nextStage: stage + 1,
+      mode,
     } as CarryToken);
   }
 
   return {
     verified,
+    mode,
     stage,
     oniMaxHp,
     stageScore,

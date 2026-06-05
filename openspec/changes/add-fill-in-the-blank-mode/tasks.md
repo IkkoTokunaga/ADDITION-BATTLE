@@ -27,18 +27,18 @@
 
 ## 4. データベース・マイグレーション（DBはユニット困難 → 手動/結合で確認）
 
-- [ ] 4.1 `init.sql` の `scores` テーブルに `mode VARCHAR(16) NOT NULL DEFAULT 'normal'` を追加（新規作成定義）
-- [ ] 4.2 既存デプロイ向けマイグレーション `ALTER TABLE scores ADD COLUMN IF NOT EXISTS mode VARCHAR(16) NOT NULL DEFAULT 'normal'` を追記
-- [ ] 4.3 ランキング用インデックスをモード対応に（`idx_scores_ranking` を `(mode, score DESC, stage DESC)` に変更／追加）
+- [x] 4.1 `init.sql` の `scores` テーブルに `mode VARCHAR(16) NOT NULL DEFAULT 'normal'` を追加（新規作成定義）
+- [x] 4.2 既存デプロイ向けマイグレーション `ALTER TABLE scores ADD COLUMN IF NOT EXISTS mode VARCHAR(16) NOT NULL DEFAULT 'normal'` を追記
+- [x] 4.3 ランキング用インデックスをモード対応に（`idx_scores_ranking` を `(mode, score DESC, stage DESC)` に変更／追加）
 
 ## 5. API エンドポイントの結線（Hono）— モードの start→more→clear→carry 受け渡しはここで実装
 
-- [ ] 5.1 `POST /api/stages/start` で `body.mode`／`carry_token` のモードを受理（未指定・不正は `normal` フォールバック）し、トークンへ格納
-- [ ] 5.2 `POST /api/stages/more` でトークン内モードを維持して追加生成
-- [ ] 5.3 クリア時のキャリートークンにモードを引き継ぐ
-- [ ] 5.4 `POST /api/scores/submit` でトークン内モードを `scores.mode` に保存（クライアント申告は信用しない）
-- [ ] 5.5 `GET /api/scores` に `?mode=normal|blank`（既定 `normal`）フィルタを追加
-- [ ] 5.6 可能なら `app.request()` でエンドポイントの結合テストを追加（start→more→submit のモード貫通）
+- [x] 5.1 `POST /api/stages/start` で `body.mode`／`carry_token` のモードを受理（未指定・不正は `normal` フォールバック）し、トークンへ格納
+- [x] 5.2 `POST /api/stages/more` でトークン内モードを維持して追加生成
+- [x] 5.3 クリア時のキャリートークンにモードを引き継ぐ
+- [x] 5.4 `POST /api/scores/submit` でトークン内モードを `scores.mode` に保存（クライアント申告は信用しない）
+- [x] 5.5 `GET /api/scores` に `?mode=normal|blank`（既定 `normal`）フィルタを追加
+- [x] 5.6 可能なら `app.request()` でエンドポイントの結合テストを追加（start→more→submit のモード貫通）
 
 ## 6. フロントエンド: スタート画面（2ボタン）
 
