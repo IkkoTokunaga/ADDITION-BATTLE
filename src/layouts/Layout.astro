@@ -5,21 +5,54 @@ import '../styles/global.css';
 interface Props {
   title?: string;
   description?: string;
+  noindex?: boolean;
 }
 
-const { title = '鬼と学ぼう！算数アドベンチャー', description = 'おにの学校で楽しく学べる算数アプリ' } = Astro.props;
+const { title = '鬼と学ぼう！算数アドベンチャー', description = 'おにの学校で楽しく学べる算数アプリ', noindex = false } = Astro.props;
 const siteUrl = 'https://addition.ikk-dev.jp';
 const ogTitle = title === '鬼と学ぼう！算数アドベンチャー' ? title : `${title} | 鬼と学ぼう！算数アドベンチャー`;
 const ogImage = `${siteUrl}/ogp.png`;
 const canonicalUrl = new URL(Astro.url.pathname, siteUrl).href;
+
+// 構造化データ（JSON-LD）はトップページにのみ出力する。
+// WebSite ＋ 無料の教育系ブラウザゲームとしての VideoGame/SoftwareApplication。
+const isHome = Astro.url.pathname === '/';
+const jsonLd = isHome
+  ? [
+      {
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        name: '鬼と学ぼう！算数アドベンチャー',
+        url: `${siteUrl}/`,
+        inLanguage: 'ja',
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': ['VideoGame', 'SoftwareApplication'],
+        name: '鬼と学ぼう！算数アドベンチャー',
+        url: `${siteUrl}/`,
+        image: ogImage,
+        description:
+          'おにの学校で楽しく算数（たし算）を学べる無料のブラウザゲーム。鬼を倒しながら計算力を鍛えよう。通常モードと、式の一部が□で隠れる虫食いモードを搭載。',
+        inLanguage: 'ja',
+        genre: '教育・学習',
+        applicationCategory: 'EducationalApplication',
+        gamePlatform: 'Web browser',
+        operatingSystem: 'Any',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'JPY' },
+        audience: { '@type': 'EducationalAudience', educationalRole: 'student' },
+      },
+    ]
+  : null;
 ---
 
 <!doctype html>
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex, follow" />}
     <link rel="canonical" href={canonicalUrl} />
 
     <!-- OGP -->
@@ -44,10 +77,12 @@ const canonicalUrl = new URL(Astro.url.pathname, siteUrl).href;
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="theme-color" content="#03120b" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="算数アドベンチャー" />
     <title>{ogTitle}</title>
+    {jsonLd && <script is:inline type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
     <ClientRouter />
   </head>
   <body class="min-h-screen flex flex-col [overflow-x:clip]">
