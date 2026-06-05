@@ -6,8 +6,10 @@ import {
   verifyAndScore,
   normalizeMode,
   type PlayToken,
+  type CarryToken,
   type Question,
 } from './game-logic';
+import { encrypt, decrypt } from '../utils/crypto';
 
 // ---------------------------------------------------------------------------
 // Regression: lock in the existing (normal-mode) behavior before adding the
@@ -76,6 +78,42 @@ describe('verifyAndScore (regression)', () => {
       true
     );
     expect(r.verified).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Token type carries the mode, survives encryption, and normalizes safely
+// (spec: ゲームモードの選択 / 計算問題の自動生成…) — tasks 3.1–3.3
+// ---------------------------------------------------------------------------
+describe('mode persistence through the session token', () => {
+  it('round-trips PlayToken.mode through encrypt → decrypt', () => {
+    const token: PlayToken = {
+      stage: 3,
+      carriedScore: 120,
+      mode: 'blank',
+      questions: [{ num1: 5, num2: 3, answer: 8, blank: 1 }],
+    };
+    const back = decrypt<PlayToken>(encrypt(token));
+    expect(back?.mode).toBe('blank');
+  });
+
+  it('round-trips CarryToken.mode (carry between stages)', () => {
+    const carry: CarryToken = { carriedScore: 500, nextStage: 4, mode: 'blank' };
+    const back = decrypt<CarryToken>(encrypt(carry));
+    expect(back?.mode).toBe('blank');
+    expect(back?.nextStage).toBe(4);
+  });
+
+  it('normalizes a legacy token with no mode to "normal"', () => {
+    const legacy = { stage: 1, carriedScore: 0, questions: [] }; // pre-blank token
+    const back = decrypt<PlayToken>(encrypt(legacy));
+    expect(normalizeMode(back?.mode)).toBe('normal');
+  });
+
+  it('normalizes a garbage mode value to "normal"', () => {
+    const tampered = { stage: 1, carriedScore: 0, questions: [], mode: 'h4x' };
+    const back = decrypt<PlayToken>(encrypt(tampered));
+    expect(normalizeMode(back?.mode)).toBe('normal');
   });
 });
 

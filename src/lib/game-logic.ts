@@ -13,8 +13,15 @@ export type GameMode = 'normal' | 'blank';
 // (num1), 2 = second addend (num2). The sum is never hidden.
 export type BlankPos = 0 | 1 | 2;
 export type Question = { num1: number; num2: number; answer: number; blank: BlankPos };
-export type PlayToken = { stage: number; questions: Question[]; carriedScore: number };
-export type CarryToken = { carriedScore: number; nextStage: number };
+// `mode` is optional so legacy tokens (issued before blank mode shipped) decrypt
+// cleanly; readers normalize a missing/invalid value to 'normal' via normalizeMode.
+export type PlayToken = {
+  stage: number;
+  questions: Question[];
+  carriedScore: number;
+  mode?: GameMode;
+};
+export type CarryToken = { carriedScore: number; nextStage: number; mode?: GameMode };
 
 // Normalize an untrusted mode value. Anything other than 'blank' is normal,
 // so unknown/garbage/undefined safely falls back to the legacy behavior.

@@ -19,11 +19,11 @@
 - [x] 2.4 [GREEN] `verifyAndScore` をモード・`□` 位置対応に実装（**計算式は不変**）
 - [x] 2.5 [RED→GREEN] 改ざん（生成されていない `(num1,num2,blank)` 組）が検証失敗になるテスト
 
-## 3. トークンとモードの一貫性 — ロジックTDD
+## 3. トークン型とモード正規化 — ロジックTDD（純ロジックのみ。エンドポイント結線は Section 5）
 
-- [ ] 3.1 [RED] `PlayToken`/`CarryToken` に `mode` を持たせ、start→more→clear→carry でモードが保持されることを検証するテスト（encrypt/decrypt 経由）
-- [ ] 3.2 [GREEN] トークン型・`genBatch`・各ステップのモード受け渡しを実装
-- [ ] 3.3 [RED→GREEN] 後方互換: `mode` 未指定/不正は `normal`、`blank` 欠落は `0` として扱うテスト
+- [x] 3.1 [GREEN] `PlayToken`/`CarryToken` 型に `mode?: GameMode` を追加（`genBatch` は Section 1 で既に mode 対応済み）
+- [x] 3.2 [RED→GREEN] トークンの `mode` が encrypt→decrypt のラウンドトリップで保持されることのテスト（両トークン型）
+- [x] 3.3 [RED→GREEN] 後方互換: トークンの `mode` 欠落/不正は `normalizeMode` で `normal` に正規化されることのテスト（`blank` 欠落=`0` は Section 2 で固定済み）
 
 ## 4. データベース・マイグレーション（DBはユニット困難 → 手動/結合で確認）
 
@@ -31,7 +31,7 @@
 - [ ] 4.2 既存デプロイ向けマイグレーション `ALTER TABLE scores ADD COLUMN IF NOT EXISTS mode VARCHAR(16) NOT NULL DEFAULT 'normal'` を追記
 - [ ] 4.3 ランキング用インデックスをモード対応に（`idx_scores_ranking` を `(mode, score DESC, stage DESC)` に変更／追加）
 
-## 5. API エンドポイントの結線（Hono）
+## 5. API エンドポイントの結線（Hono）— モードの start→more→clear→carry 受け渡しはここで実装
 
 - [ ] 5.1 `POST /api/stages/start` で `body.mode`／`carry_token` のモードを受理（未指定・不正は `normal` フォールバック）し、トークンへ格納
 - [ ] 5.2 `POST /api/stages/more` でトークン内モードを維持して追加生成
